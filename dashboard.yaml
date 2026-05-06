@@ -1,0 +1,290 @@
+title: Casa di Igor
+views:
+  - title: Dashboard
+    path: dashboard
+    type: sections
+    max_columns: 3
+    badges:
+      - type: entity
+        entity: person.igor
+        color: green
+      - type: entity
+        entity: weather.forecast_casa
+        color: blue
+      - type: entity
+        entity: sensor.hub3_063d_temperatura
+        color: orange
+    sections:
+      # === COLONNA 1 ===
+
+      # Soggiorno
+      - type: grid
+        title: Soggiorno
+        cards:
+          - type: custom:mushroom-climate-card
+            entity: sensor.hub3_063d_temperatura
+            name: Clima
+            icon: mdi:thermometer
+            show_temperature_control: false
+
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: sensor.hub3_063d_temperatura
+                name: Temperatura
+                icon: mdi:thermometer
+                primary_info: state
+                secondary_info: name
+                icon_color: orange
+              - type: custom:mushroom-entity-card
+                entity: sensor.hub3_063d_umidita
+                name: Umidità
+                icon: mdi:water-percent
+                primary_info: state
+                secondary_info: name
+                icon_color: blue
+
+          - type: custom:mushroom-light-card
+            entity: light.lampada
+            name: Tapo L520
+            icon: mdi:lightbulb
+            show_brightness_control: true
+            show_color_temp_control: true
+            use_light_color: true
+            collapsible_controls: true
+
+          - type: custom:mushroom-media-player-card
+            entity: media_player.sony_kd_55xf9005
+            name: Sony TV
+            icon: mdi:television
+            use_media_info: true
+            show_volume_level: true
+            media_controls:
+              - on_off
+              - play_pause_stop
+            volume_controls:
+              - volume_buttons
+              - volume_mute
+            collapsible_controls: true
+
+          - type: custom:mushroom-entity-card
+            entity: scene.home_cinema
+            name: Home Cinema
+            icon: mdi:movie-open
+            icon_color: deep-purple
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.home_cinema
+
+          - type: custom:mushroom-entity-card
+            entity: switch.shelly1_vela
+            name: Faretti
+            icon: mdi:ceiling-light-multiple
+            tap_action:
+              action: toggle
+
+      # === COLONNA 2 ===
+
+      # Energia
+      - type: grid
+        title: Energia
+        cards:
+          - type: custom:mushroom-template-card
+            primary: Consumo Totale
+            secondary: >-
+              {{ (states('sensor.shellypstripg4_e8f60a617f38_switch_0_potenza') |
+              float(0) +
+              states('sensor.shellypstripg4_e8f60a617f38_switch_1_potenza') |
+              float(0) +
+              states('sensor.shellypstripg4_e8f60a617f38_switch_2_potenza') |
+              float(0) +
+              states('sensor.shellypstripg4_e8f60a617f38_switch_3_potenza') |
+              float(0) +
+              states('sensor.shellyplus1pm_4855199a166c_switch_0_power') |
+              float(0)) | round(1) }} W
+            icon: mdi:flash
+            icon_color: green
+
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: sensor.shellypstripg4_e8f60a617f38_switch_0_potenza
+                name: Output 1
+                icon: mdi:power-plug
+                icon_color: green
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: sensor.shellypstripg4_e8f60a617f38_switch_1_potenza
+                name: Output 2
+                icon: mdi:power-plug
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: sensor.shellypstripg4_e8f60a617f38_switch_2_potenza
+                name: Output 3
+                icon: mdi:power-plug
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: sensor.shellypstripg4_e8f60a617f38_switch_3_potenza
+                name: Output 4
+                icon: mdi:power-plug
+                layout: vertical
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.shellyplus1pm_4855199a166c_switch_0_power
+            name: Scaldabagno Potenza
+            icon: mdi:water-boiler
+            icon_color: orange
+
+          # Scaldabagno
+          - type: custom:mushroom-template-card
+            primary: Scaldabagno Ariston
+            secondary: >-
+              {{ states('water_heater.scaldabagno') }} · Target:
+              {{ state_attr('water_heater.scaldabagno', 'temperature') }}°C
+            icon: mdi:water-boiler
+            icon_color: orange
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.ariston_average_showers
+            name: Docce Disponibili
+            icon: mdi:shower-head
+            icon_color: cyan
+
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: switch.ariston_eco_mode
+                name: Eco
+                icon: mdi:leaf
+                tap_action:
+                  action: toggle
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: switch.ariston_power
+                name: Power
+                icon: mdi:power
+                tap_action:
+                  action: toggle
+                layout: vertical
+              - type: custom:mushroom-entity-card
+                entity: switch.ariston_anti_legionella
+                name: Anti-Leg.
+                icon: mdi:shield-check
+                tap_action:
+                  action: toggle
+                layout: vertical
+
+      # === COLONNA 3 ===
+
+      # Sicurezza
+      - type: grid
+        title: Sicurezza
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.shelly_blu_door_window_8cd3_window
+            name: Porta/Finestra
+            icon: mdi:door-closed
+            icon_color: green
+
+          - type: custom:mushroom-entity-card
+            entity: binary_sensor.hub3_063d
+            name: Movimento
+            icon: mdi:motion-sensor
+            icon_color: blue
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.hub3_063d_illuminamento
+            name: Luminosità
+            icon: mdi:brightness-6
+            icon_color: yellow
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.shelly_blu_door_window_8cd3_battery
+            name: Batteria Sensore
+            icon: mdi:battery
+            icon_color: green
+
+      # Dispositivi
+      - type: grid
+        title: Dispositivi
+        cards:
+          - type: custom:mushroom-person-card
+            entity: person.igor
+            icon_type: entity-picture
+            layout: horizontal
+
+          - type: custom:mushroom-template-card
+            primary: Pixel 8a
+            secondary: "{{ states('sensor.pixel_8a_battery_level') }}%"
+            icon: mdi:cellphone
+            icon_color: >-
+              {% set batt = states('sensor.pixel_8a_battery_level') | int %}
+              {% if batt < 20 %}red{% elif batt < 50 %}orange{% else %}green{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: Pixel 8 Pro
+            secondary: "{{ states('sensor.pixel_8_pro_battery_level') }}%"
+            icon: mdi:cellphone
+            icon_color: >-
+              {% set batt = states('sensor.pixel_8_pro_battery_level') | int %}
+              {% if batt < 20 %}red{% elif batt < 50 %}orange{% else %}green{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: Pixel 8
+            secondary: "{{ states('sensor.pixel_8_battery_level') }}%"
+            icon: mdi:cellphone
+            icon_color: >-
+              {% set batt = states('sensor.pixel_8_battery_level') | int %}
+              {% if batt < 20 %}red{% elif batt < 50 %}orange{% else %}green{% endif %}
+
+          - type: custom:mushroom-template-card
+            primary: iPad di Davide
+            secondary: "{{ states('sensor.ipad_di_davide_battery_level') }}%"
+            icon: mdi:tablet-ipad
+            icon_color: >-
+              {% set batt = states('sensor.ipad_di_davide_battery_level') | int %}
+              {% if batt < 20 %}red{% elif batt < 50 %}orange{% else %}green{% endif %}
+
+      # Automazioni
+      - type: grid
+        title: Quick Actions
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Buonanotte
+                icon: mdi:weather-night
+                icon_color: deep-purple
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: automation.trigger
+                  target:
+                    entity_id: automation.buonanotte
+              - type: custom:mushroom-template-card
+                primary: Accendi Postazione
+                icon: mdi:desktop-tower-monitor
+                icon_color: green
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: automation.trigger
+                  target:
+                    entity_id: automation.new_automation
+              - type: custom:mushroom-template-card
+                primary: Spegni Postazione
+                icon: mdi:power-off
+                icon_color: red
+                layout: vertical
+                tap_action:
+                  action: call-service
+                  service: automation.trigger
+                  target:
+                    entity_id: automation.new_automation2
+
+          - type: custom:mushroom-todo-card
+            entity: todo.lista_della_spesa
+            name: Lista della Spesa
+            icon: mdi:cart

@@ -1,0 +1,3231 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Casa di Igor — Smart Dashboard 3D (WebGL)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+
+  <!-- Three.js: importmap caricata PRIMA dei moduli -->
+  <script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+  <style>
+    :root {
+      --bg: #0b0b1a;
+      --surface: #111125;
+      --card: rgba(30, 30, 50, 0.5);
+      --card-border: rgba(255, 255, 255, 0.06);
+      --primary: #adc6ff;
+      --primary-dim: #4b8eff;
+      --green: #66dd8b;
+      --green-dim: #25a55a;
+      --orange: #ffb874;
+      --orange-dim: #d47b00;
+      --red: #ff6b6b;
+      --cyan: #64dfdf;
+      --text: #e2e0fc;
+      --text-dim: #6b6b8d;
+      --text-muted: #3d3d5c;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(75, 142, 255, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(102, 221, 139, 0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      display: inline-flex;
+      vertical-align: middle;
+    }
+
+    .filled {
+      font-variation-settings: 'FILL' 1, 'wght' 400;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(11, 11, 26, 0.8);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .header .date {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .weather-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .main {
+      padding: 80px 16px 16px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      height: calc(100vh - 80px);
+      overflow: hidden;
+    }
+
+    .scene-3d-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      aspect-ratio: unset;
+      height: 100%;
+      max-height: calc(100vh - 112px);
+      margin: 0;
+      border-radius: 24px;
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 30%, rgba(75, 142, 255, 0.12) 0%, transparent 60%),
+        linear-gradient(180deg, #0d0d22 0%, #08081a 100%);
+      border: 1px solid rgba(173, 198, 255, 0.08);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .scene-3d-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+
+    .scene-3d-wrap canvas.dragging {
+      cursor: grabbing;
+    }
+
+    .scene-overlay-top {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .scene-tag {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 50px;
+      background: rgba(11, 11, 26, 0.55);
+      border: 1px solid rgba(173, 198, 255, 0.12);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(173, 198, 255, 0.75);
+    }
+
+    .scene-tag .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .scene-hint {
+      pointer-events: none;
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    .scene-tooltip {
+      position: absolute;
+      pointer-events: none;
+      z-index: 10;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: rgba(11, 11, 26, 0.85);
+      border: 1px solid rgba(173, 198, 255, 0.18);
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transform: translate(-50%, -130%);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      white-space: nowrap;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .scene-tooltip.show {
+      opacity: 1;
+    }
+
+    .scene-controls {
+      position: absolute;
+      bottom: 14px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+      z-index: 5;
+    }
+
+    .scene-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(11, 11, 26, 0.55);
+      border: 1px solid rgba(173, 198, 255, 0.12);
+      color: rgba(173, 198, 255, 0.7);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .scene-btn:hover {
+      background: rgba(75, 142, 255, 0.18);
+      color: var(--primary);
+    }
+
+    .scene-btn .material-symbols-outlined {
+      font-size: 18px;
+    }
+
+    .scene-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      z-index: 4;
+      background: rgba(11, 11, 26, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .scene-loading.hidden {
+      display: none;
+    }
+
+    .scene-error {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      color: var(--red);
+      font-size: 0.78rem;
+      letter-spacing: 1px;
+      background: rgba(11, 11, 26, 0.85);
+      z-index: 6;
+    }
+
+    .scene-error.show {
+      display: flex;
+    }
+
+    .scene-error code {
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.72rem;
+      margin-top: 6px;
+      opacity: 0.7;
+      word-break: break-word;
+      max-width: 80%;
+    }
+
+    .cards-sidebar {
+      width: 340px;
+      flex: 0 0 340px;
+      height: calc(100vh - 96px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(173,198,255,0.2) transparent;
+      padding-right: 4px;
+    }
+
+    .cards-sidebar::-webkit-scrollbar { width: 4px; }
+    .cards-sidebar::-webkit-scrollbar-thumb { background: rgba(173,198,255,0.2); border-radius: 2px; }
+    .cards-sidebar::-webkit-scrollbar-track { background: transparent; }
+
+    .cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .device-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      transition: all 0.2s ease;
+    }
+
+    .device-row:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .device-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .device-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .device-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .device-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .device-state {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .toggle {
+      width: 48px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s ease;
+      border: none;
+      outline: none;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      background: #666;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .toggle.on {
+      background: var(--primary-dim);
+    }
+
+    .toggle.on::after {
+      left: 23px;
+      background: #fff;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .badge-green {
+      color: var(--green);
+      background: rgba(102, 221, 139, 0.1);
+    }
+
+    .badge-orange {
+      color: var(--orange);
+      background: rgba(255, 184, 116, 0.1);
+    }
+
+    .badge-red {
+      color: var(--red);
+      background: rgba(255, 107, 107, 0.1);
+    }
+
+    .badge-blue {
+      color: var(--primary);
+      background: rgba(173, 198, 255, 0.1);
+    }
+
+    .badge-cyan {
+      color: var(--cyan);
+      background: rgba(100, 223, 223, 0.1);
+    }
+
+    .battery-bar {
+      width: 60px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .battery-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .power-gauge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .power-circle {
+      width: 150px;
+      height: 150px;
+      position: relative;
+      margin: 0 auto 8px;
+    }
+
+    .power-circle svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .power-circle .track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 10;
+    }
+
+    .power-circle .fill-ring {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.8s ease, stroke 0.8s ease;
+    }
+
+    .power-circle .value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .power-circle .value .num {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--green);
+      transition: color 0.8s ease;
+    }
+
+    .power-circle .value .unit {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .power-circle .value .scale {
+      font-size: 0.5rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .temp-circle {
+      width: 120px;
+      height: 120px;
+      position: relative;
+      margin: 0 auto 16px;
+    }
+
+    .temp-circle svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .temp-circle .track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.05);
+      stroke-width: 8;
+    }
+
+    .temp-circle .fill-ring {
+      fill: none;
+      stroke: var(--orange);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease;
+    }
+
+    .temp-circle .value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .temp-circle .value .num {
+      font-size: 1.6rem;
+      font-weight: 900;
+    }
+
+    .temp-circle .value .unit {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 16px 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text);
+      font-family: inherit;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.03);
+    }
+
+    .action-btn:active {
+      transform: scale(0.97);
+    }
+
+    .action-btn .material-symbols-outlined {
+      font-size: 28px;
+    }
+
+    .action-btn span:last-child {
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .person-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: rgba(173, 198, 255, 0.08);
+      border-left: 3px solid var(--primary);
+      border-radius: 14px;
+    }
+
+    .person-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      position: relative;
+    }
+
+    .person-avatar .dot {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      border: 2px solid var(--bg);
+    }
+
+    .slider-container {
+      margin-top: 8px;
+    }
+
+    .ac-mode-btn {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;
+      padding: 7px 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04); color: var(--text-dim); cursor: pointer;
+      font-size: 0.72rem; font-weight: 700; font-family: inherit; transition: all 0.2s;
+    }
+    .ac-mode-btn span { font-size: 1rem; }
+    .ac-mode-btn.active { background: rgba(75,142,255,0.18); border-color: var(--primary); color: var(--primary); }
+    .ac-mode-btn.active.heat { background: rgba(255,150,50,0.18); border-color: var(--orange); color: var(--orange); }
+
+    .ac-fan-btn {
+      padding: 5px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04); color: var(--text-dim); cursor: pointer;
+      font-size: 0.7rem; font-weight: 700; font-family: inherit; transition: all 0.2s;
+    }
+    .ac-fan-btn.active { background: rgba(100,223,223,0.15); border-color: var(--cyan); color: var(--cyan); }
+
+    .slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--orange);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 184, 116, 0.4);
+    }
+
+    .lamp-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(5, 5, 20, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lamp-modal-overlay.open {
+      display: flex;
+    }
+
+    .lamp-modal {
+      position: relative;
+      width: 320px;
+      background: rgba(10, 12, 35, 0.75);
+      border: 1px solid rgba(100, 180, 255, 0.25);
+      border-radius: 20px;
+      padding: 32px 28px 28px;
+      box-shadow: 0 0 0 1px rgba(100, 180, 255, 0.08), 0 0 40px rgba(75, 142, 255, 0.15), 0 0 80px rgba(75, 142, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalIn {
+      from {
+        opacity: 0;
+        transform: scale(0.88) translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .lamp-modal-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(100, 180, 255, 0.7);
+      margin-bottom: 6px;
+    }
+
+    .lamp-modal-name {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+
+    .lamp-modal-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .lamp-modal-label {
+      font-size: 0.72rem;
+      color: rgba(173, 198, 255, 0.6);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .lamp-modal-value {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .lamp-modal-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(100, 180, 255, 0.12);
+      outline: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .lamp-modal-slider.bright::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--orange);
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(255, 184, 116, 0.6);
+    }
+
+    .lamp-modal-slider.temp::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #b3d4ff;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(180, 210, 255, 0.5);
+    }
+
+    .lamp-modal-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: rgba(100, 180, 255, 0.05);
+      border: 1px solid rgba(100, 180, 255, 0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    .lamp-modal-power {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .lamp-modal-close {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: rgba(100, 180, 255, 0.08);
+      border: 1px solid rgba(100, 180, 255, 0.2);
+      border-radius: 12px;
+      color: rgba(173, 198, 255, 0.7);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lamp-modal-close:hover {
+      background: rgba(100, 180, 255, 0.15);
+      color: var(--primary);
+    }
+
+    .lamp-modal::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(100, 180, 255, 0.015) 3px, rgba(100, 180, 255, 0.015) 4px);
+      border-radius: 20px;
+      pointer-events: none;
+    }
+
+    .door-log-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(100, 180, 255, 0.06);
+      font-size: 0.78rem;
+    }
+
+    .door-log-entry:last-child {
+      border-bottom: none;
+    }
+
+    .door-log-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .door-log-dot.open {
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red);
+    }
+
+    .door-log-dot.close {
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    .door-log-time {
+      color: rgba(173, 198, 255, 0.45);
+      font-size: 0.68rem;
+      min-width: 70px;
+    }
+
+    .door-log-label {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .door-log-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .door-log-list::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .door-log-list::-webkit-scrollbar-thumb {
+      background: rgba(100, 180, 255, 0.2);
+      border-radius: 2px;
+    }
+
+    .conn-status {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 200;
+      padding: 8px 16px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .conn-status.connected {
+      background: rgba(102, 221, 139, 0.15);
+      color: var(--green);
+    }
+
+    .conn-status.disconnected {
+      background: rgba(255, 107, 107, 0.15);
+      color: var(--red);
+    }
+
+    @media (max-width: 900px) {
+      .main {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+        padding: 88px 12px 12px;
+      }
+      .scene-3d-wrap { aspect-ratio: 4/3; }
+      .cards-sidebar {
+        width: 100%;
+        flex: none;
+        height: auto;
+        max-height: 60vh;
+      }
+      .header { padding: 12px 16px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- CAROUSEL WRAPPER -->
+  <div id="carousel" style="display:flex;width:300vw;height:100vh;overflow:hidden;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);will-change:transform;">
+
+  <!-- SCREEN 1 -->
+  <div id="screen1" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;">
+
+  <div class="header">
+    <div>
+      <h1>Ciao Igor</h1>
+      <div class="date" id="dateDisplay"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="weather-pill">
+        <span class="material-symbols-outlined filled" style="color:var(--primary)">partly_cloudy_day</span>
+        <span id="weatherState">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="scene-3d-wrap" id="sceneWrap">
+      <canvas id="sceneCanvas"></canvas>
+      <div class="scene-overlay-top">
+        <div class="scene-tag"><span class="dot"></span>Live · WebGL</div>
+        <div class="scene-hint">Trascina · Tasto destro ruota · Scroll zoom · Doppio click reset</div>
+      </div>
+      <div class="scene-tooltip" id="sceneTooltip"></div>
+      <div class="scene-controls">
+        <button class="scene-btn" id="btnViewTop" title="Vista dall'alto"><span
+            class="material-symbols-outlined">expand_more</span></button>
+        <button class="scene-btn" id="btnViewIso" title="Isometrica"><span
+            class="material-symbols-outlined">view_in_ar</span></button>
+        <button class="scene-btn" id="btnViewReset" title="Reset"><span
+            class="material-symbols-outlined">restart_alt</span></button>
+        <button class="scene-btn" id="btnAutoRotate" title="Rotazione automatica"><span
+            class="material-symbols-outlined">360</span></button>
+      </div>
+      <div class="scene-loading" id="sceneLoading">Caricamento scena 3D…</div>
+      <div class="scene-error" id="sceneError">
+        <div>Errore caricamento Three.js</div><code id="sceneErrorMsg"></code>
+      </div>
+    </div>
+
+    <div class="cards-sidebar"><div class="cards-grid">
+      <div class="card">
+        <div class="card-title">Soggiorno</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <span class="badge badge-orange"><span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;margin-right:2px;">thermometer</span><span id="badgeTemp">—°C</span></span>
+          <span class="badge badge-blue"><span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;margin-right:2px;">water_drop</span><span id="badgeHum">—%</span></span>
+          <span class="badge" id="badgeLux">— lux</span>
+        </div>
+        <div class="device-row" id="rowTV">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span class="material-symbols-outlined">tv</span>
+            </div>
+            <div>
+              <div class="device-name">Sony TV</div>
+              <div class="device-state" id="tvState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleTV"></button>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconLampada" style="color:var(--orange)"><span
+                class="material-symbols-outlined filled">lightbulb</span></div>
+            <div>
+              <div class="device-name">Tapo L520</div>
+              <div class="device-state" id="lampadaState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleLampada"></button>
+        </div>
+        <div class="slider-container"><input type="range" class="slider" id="sliderLampada" min="0" max="255"
+            value="0" /></div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span
+                class="material-symbols-outlined">highlight</span></div>
+            <div>
+              <div class="device-name">Faretti</div>
+              <div class="device-state" id="farettiState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleFaretti"></button>
+        </div>
+        <button class="action-btn" id="btnCinema" style="width:100%;flex-direction:row;gap:10px;margin-top:12px;">
+          <span class="material-symbols-outlined filled" style="color:var(--primary)">movie</span>
+          <span style="font-size:0.85rem;font-weight:700;">Home Cinema</span>
+        </button>
+      </div>
+
+      <!-- CARD CONDIZIONATORE SWITCHBOT -->
+      <div class="card" id="cardAC">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Condizionatore</span>
+          <button class="toggle" id="toggleAC"></button>
+        </div>
+
+        <!-- Stato + temperatura target -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-outlined" id="acModeIcon" style="font-size:1.6rem;color:var(--cyan)">ac_unit</span>
+            <div>
+              <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Modalità</div>
+              <div style="font-size:0.9rem;font-weight:700;" id="acModeLabel">—</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Temperatura</div>
+            <div style="font-size:1.6rem;font-weight:900;color:var(--primary);" id="acTempDisplay">—°</div>
+          </div>
+        </div>
+
+        <!-- Slider temperatura -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span class="material-symbols-outlined" style="font-size:1rem;color:var(--text-dim)">remove</span>
+          <input type="range" class="slider" id="sliderACTemp" min="16" max="30" value="22" style="flex:1;" />
+          <span class="material-symbols-outlined" style="font-size:1rem;color:var(--text-dim)">add</span>
+          <span style="font-size:0.85rem;font-weight:700;min-width:32px;text-align:right;" id="acTempSliderVal">22°</span>
+        </div>
+
+        <!-- Modalità caldo/freddo -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="ac-mode-btn" id="btnACCool" data-mode="cool">
+            <span class="material-symbols-outlined">ac_unit</span> Freddo
+          </button>
+          <button class="ac-mode-btn" id="btnACHeat" data-mode="heat">
+            <span class="material-symbols-outlined">local_fire_department</span> Caldo
+          </button>
+          <button class="ac-mode-btn" id="btnACFan" data-mode="fan_only">
+            <span class="material-symbols-outlined">mode_fan</span> Ventola
+          </button>
+        </div>
+
+        <!-- Velocità ventola -->
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">VENTOLA</span>
+          <div style="display:flex;gap:6px;">
+            <button class="ac-fan-btn" id="btnFanAuto" data-fan="auto">Auto</button>
+            <button class="ac-fan-btn" id="btnFanLow" data-fan="low">Bassa</button>
+            <button class="ac-fan-btn" id="btnFanMid" data-fan="medium">Media</button>
+            <button class="ac-fan-btn" id="btnFanHigh" data-fan="high">Alta</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Energia</div>
+        <div class="power-gauge">
+          <div class="power-circle">
+            <svg viewBox="0 0 120 120">
+              <circle class="track" cx="60" cy="60" r="52" />
+              <circle class="fill-ring" id="powerRing" cx="60" cy="60" r="52" stroke-dasharray="326.7"
+                stroke-dashoffset="326.7" />
+            </svg>
+            <div class="value">
+              <div class="num" id="powerNum">—</div>
+              <div class="unit">Watt</div>
+              <div class="scale">/ 3500W</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--green)" id="out0">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 1</div>
+            <button class="toggle" id="toggleOut0" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out1">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 2</div>
+            <button class="toggle" id="toggleOut1" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out2">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 3</div>
+            <button class="toggle" id="toggleOut2" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out3">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 4</div>
+            <button class="toggle" id="toggleOut3" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--orange)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange);background:rgba(255,184,116,0.1);"><span
+                class="material-symbols-outlined filled">water_heater</span></div>
+            <div>
+              <div class="device-name">Scaldabagno</div>
+              <div class="device-state" id="boilerPowerState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--orange)" id="boilerPower">—W</span>
+            <button class="toggle" id="toggleBoilerEnergy"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--cyan)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--cyan);background:rgba(100,223,223,0.1);"><span
+                class="material-symbols-outlined">local_laundry_service</span></div>
+            <div>
+              <div class="device-name">Lavatrice</div>
+              <div class="device-state" id="washerState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--cyan)" id="washerPower">—W</span>
+            <button class="toggle" id="toggleWasherEnergy"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--text)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--text);background:rgba(255,255,255,0.1);"><span
+                class="material-symbols-outlined">kitchen</span></div>
+            <div>
+              <div class="device-name">Frigorifero</div>
+              <div class="device-state" id="fridgeState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--text)" id="fridgePower">—W</span>
+            <button class="toggle" id="toggleFridgePower"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Scaldabagno Ariston</div>
+        <div class="temp-circle">
+          <svg viewBox="0 0 120 120">
+            <circle class="track" cx="60" cy="60" r="52" />
+            <circle class="fill-ring" id="tempRing" cx="60" cy="60" r="52" stroke-dasharray="326.7"
+              stroke-dashoffset="100" />
+          </svg>
+          <div class="value">
+            <div class="num" id="boilerTemp">—°</div>
+            <div class="unit">Target</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--cyan);font-size:20px;">shower</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="showers">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Docce</div>
+          </div>
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--text-dim);font-size:20px;">mode</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="boilerMode">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Modo</div>
+          </div>
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--green);font-size:20px;">health_and_safety</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="antiLeg">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Anti-Leg.</div>
+          </div>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">eco</span></div>
+            <div class="device-name">Eco Mode</div>
+          </div>
+          <button class="toggle" id="toggleEco"></button>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span
+                class="material-symbols-outlined">power_settings_new</span></div>
+            <div class="device-name">Alimentazione</div>
+          </div>
+          <button class="toggle" id="toggleBoilerPower"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Sicurezza</div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconDoor" style="color:var(--green);background:rgba(102,221,139,0.1);"><span
+                class="material-symbols-outlined filled">sensor_door</span></div>
+            <div>
+              <div class="device-name">Porta / Finestra</div>
+              <div class="device-state" id="doorState">—</div>
+            </div>
+          </div>
+          <span class="badge badge-green" id="doorBadge">—</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconMotion" style="color:var(--cyan)"><span
+                class="material-symbols-outlined">motion_sensor_active</span></div>
+            <div>
+              <div class="device-name">Sensore Movimento</div>
+              <div class="device-state" id="motionState">—</div>
+            </div>
+          </div>
+          <span class="badge" id="motionBadge">—</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange)"><span
+                class="material-symbols-outlined filled">light_mode</span></div>
+            <div>
+              <div class="device-name">Luminosita'</div>
+              <div class="device-state" id="luxState">—</div>
+            </div>
+          </div>
+          <span class="badge" id="luxBadge">— lux</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--green)"><span
+                class="material-symbols-outlined">battery_full</span></div>
+            <div>
+              <div class="device-name">Batteria Sensore</div>
+              <div class="device-state" id="sensorBattState">—</div>
+            </div>
+          </div>
+          <span class="badge badge-green" id="sensorBattBadge">—%</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Camera 2</div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange)"><span class="material-symbols-outlined">desk</span>
+            </div>
+            <div>
+              <div class="device-name">Yeelight Screenbar</div>
+              <div class="device-state" id="xiaomiLightState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleXiaomiLight"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Dispositivi</div>
+        <div class="person-badge">
+          <div class="person-avatar">I<div class="dot" id="personDot"></div>
+          </div>
+          <div>
+            <div style="font-size:0.9rem;font-weight:700;color:var(--primary)">Igor</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;font-weight:600;"
+              id="personState">—</div>
+          </div>
+        </div>
+        <div id="devicesContainer"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Quick Actions</div>
+        <div class="actions-grid" style="margin-bottom:20px;">
+          <button class="action-btn" id="btnBuonanotte"><span class="material-symbols-outlined filled"
+              style="color:#b388ff">bedtime</span><span>Buonanotte</span></button>
+          <button class="action-btn" id="btnAccendi"><span class="material-symbols-outlined filled"
+              style="color:var(--green)">desktop_windows</span><span>Accendi Post.</span></button>
+          <button class="action-btn" id="btnSpegni"><span class="material-symbols-outlined"
+              style="color:var(--red)">power_settings_new</span><span>Spegni Post.</span></button>
+        </div>
+        <div class="device-row" style="opacity:0.35" id="vacuumRow">
+          <div class="device-info">
+            <div class="device-icon"><span class="material-symbols-outlined">vacuum</span></div>
+            <div>
+              <div class="device-name">Roborock S5 Max</div>
+              <div class="device-state" id="vacuumState">Offline</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><span
+              style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-dim)">Lista
+              Spesa</span><span class="material-symbols-outlined"
+              style="font-size:18px;color:var(--text-dim)">shopping_cart</span></div>
+          <div id="shoppingList" style="font-size:0.8rem;color:var(--text-dim)">Caricamento...</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ============== Home Assistant WebSocket ============== -->
+  <script>
+    const HA_WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') +
+      (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'
+        ? location.host : '192.168.1.3:8123') + '/api/websocket';
+    const HA_LL_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJiN2ZmNTM5NTYyMTE0OTZmYmQ2YTAzYTNkMDliZWMwNyIsImlhdCI6MTc3ODAxODI4MCwiZXhwIjoyMDkzMzc4MjgwfQ.aSMESzt9GYiY_lf-KKrKEl5v6dkKs0AKJevTRehk8Dw';
+    let ws = null, msgId = 1, states = {}, pendingCallbacks = {}, authFailed = false;
+
+    (function updateDate() {
+      const d = new Date();
+      const days = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato'];
+      const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+      document.getElementById('dateDisplay').textContent = days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+    })();
+
+    function getHAToken() {
+      const u = new URLSearchParams(location.search);
+      // HA_LL_TOKEN ha priorità — sempre aggiornato nel file
+      return HA_LL_TOKEN;
+      try {
+        const stored = localStorage.getItem('hassTokens');
+        if (stored) {
+          const p = JSON.parse(stored);
+          if (p && p.access_token && p.expires && p.expires > Date.now() + 10000) return p.access_token;
+        }
+      } catch (e) { }
+      return HA_LL_TOKEN;
+    }
+    function send(type, data, cb) {
+      const id = msgId++;
+      if (cb) pendingCallbacks[id] = cb;
+      ws.send(JSON.stringify(Object.assign({ id, type }, data)));
+    }
+    function callService(domain, service, data) { send('call_service', { domain, service, service_data: data }); }
+    function getState(id) { return states[id] ? states[id].state : 'unavailable'; }
+    function getAttr(id, a) { return states[id] && states[id].attributes ? states[id].attributes[a] : null; }
+    function setToggle(id, on) { const el = document.getElementById(id); if (el) el.className = 'toggle' + (on ? ' on' : ''); }
+
+    let _audioCtx = null;
+    function playSwitch() {
+      try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _audioCtx;
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) { const t = i / ctx.sampleRate; data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 280) * 0.9; }
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+        src.connect(gain); gain.connect(ctx.destination); src.start();
+        const buf2 = ctx.createBuffer(1, ctx.sampleRate * 0.025, ctx.sampleRate);
+        const d2 = buf2.getChannelData(0);
+        for (let j = 0; j < d2.length; j++) { const t = j / ctx.sampleRate; d2[j] = (Math.random() * 2 - 1) * Math.exp(-t * 400) * 0.5; }
+        const src2 = ctx.createBufferSource(); src2.buffer = buf2;
+        const g2 = ctx.createGain();
+        g2.gain.setValueAtTime(0.6, ctx.currentTime + 0.018);
+        g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.045);
+        src2.connect(g2); g2.connect(ctx.destination);
+        src2.start(ctx.currentTime + 0.018);
+      } catch (e) { }
+    }
+    function toggleEntity(id) { playSwitch(); callService('homeassistant', 'toggle', { entity_id: id }); }
+    function setBrightness(v) { callService('light', 'turn_on', { entity_id: 'light.lampada', brightness: parseInt(v) }); }
+
+    function toggleTV() {
+      playSwitch();
+      const isOn = getState('media_player.sony_2') !== 'off';
+      callService('remote', isOn ? 'turn_off' : 'turn_on', { entity_id: 'remote.sony_kd_55xf9005' });
+    }
+
+    function openLampModal() {
+      const lampState = getState('light.lampada');
+      const bright = getAttr('light.lampada', 'brightness') || 128;
+      const tempK = getAttr('light.lampada', 'color_temp_kelvin') || 4000;
+      document.getElementById('modalLampState').textContent = lampState === 'on' ? 'Accesa' : 'Spenta';
+      setToggle('modalToggleLampada', lampState === 'on');
+      document.getElementById('modalSliderBright').value = bright;
+      document.getElementById('modalBrightVal').textContent = Math.round(bright / 255 * 100) + '%';
+      document.getElementById('lampModal').classList.add('open');
+    }
+    function closeLampModal() { document.getElementById('lampModal').classList.remove('open'); }
+
+    function openDoorModal() {
+      const doorState = getState('binary_sensor.shelly_blu_door_window_8cd3_window');
+      const isOpen = doorState === 'on';
+      document.getElementById('doorCurrentState').textContent = isOpen ? 'Aperta' : 'Chiusa';
+      document.getElementById('doorCurrentDot').className = 'door-log-dot ' + (isOpen ? 'open' : 'close');
+      document.getElementById('doorModal').classList.add('open');
+      const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+      fetch('http://192.168.1.3:8123/api/history/period/' + since +
+        '?filter_entity_id=binary_sensor.shelly_blu_door_window_8cd3_window&minimal_response=true', {
+        headers: { 'Authorization': 'Bearer ' + HA_LL_TOKEN }
+      })
+        .then(r => r.json())
+        .then(function (data) {
+          const list = document.getElementById('doorLogList');
+          const events = (data[0] || []).slice().reverse();
+          if (!events.length) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:16px;font-size:0.75rem;">Nessun evento</div>'; return; }
+          list.innerHTML = events.map(function (e) {
+            const open = e.state === 'on';
+            const d = new Date(e.last_changed);
+            const time = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' ' +
+              d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            return '<div class="door-log-entry"><div class="door-log-dot ' + (open ? 'open' : 'close') + '"></div>' +
+              '<span class="door-log-time">' + time + '</span><span class="door-log-label">' + (open ? 'Aperta' : 'Chiusa') + '</span></div>';
+          }).join('');
+        })
+        .catch(function () {
+          document.getElementById('doorLogList').innerHTML = '<div style="color:var(--red);text-align:center;padding:16px;font-size:0.75rem;">Errore caricamento</div>';
+        });
+    }
+    function closeDoorModal() { document.getElementById('doorModal').classList.remove('open'); }
+
+    window.HA = { callService, toggleEntity, toggleTV, openLampModal, openDoorModal, getState, get states() { return states; },
+      send(type, data, cb) { send(type, data, cb); } };
+
+    // === CONDIZIONATORE (SwitchBot) ===
+    const AC_ENTITY = 'climate.condizionatore'; // aggiornare con entity ID reale
+    const modeIcons = { cool: 'ac_unit', heat: 'local_fire_department', fan_only: 'mode_fan', auto: 'thermostat', dry: 'water_drop', off: 'power_settings_new' };
+    const modeLabels = { cool: 'Freddo', heat: 'Caldo', fan_only: 'Ventola', auto: 'Auto', dry: 'Deumidifica', off: 'Spento' };
+
+    function updateACCard(states) {
+      const ac = states[AC_ENTITY];
+      if (!ac) { document.getElementById('cardAC').style.opacity = '0.4'; return; }
+      document.getElementById('cardAC').style.opacity = '1';
+      const isOn = ac.state !== 'off' && ac.state !== 'unavailable';
+      setToggle('toggleAC', isOn);
+      const mode = isOn ? ac.state : 'off';
+      document.getElementById('acModeIcon').textContent = modeIcons[mode] || 'ac_unit';
+      document.getElementById('acModeIcon').style.color = mode === 'heat' ? 'var(--orange)' : 'var(--cyan)';
+      document.getElementById('acModeLabel').textContent = modeLabels[mode] || mode;
+      const temp = ac.attributes?.temperature || 22;
+      document.getElementById('acTempDisplay').textContent = temp + '°';
+      document.getElementById('sliderACTemp').value = temp;
+      document.getElementById('acTempSliderVal').textContent = temp + '°';
+      // Mode buttons
+      ['Cool','Heat','Fan'].forEach(m => document.getElementById('btnAC'+m).classList.remove('active'));
+      if (mode === 'cool') document.getElementById('btnACCool').classList.add('active');
+      else if (mode === 'heat') { document.getElementById('btnACHeat').classList.add('active', 'heat'); }
+      else if (mode === 'fan_only') document.getElementById('btnACFan').classList.add('active');
+      // Fan buttons
+      document.querySelectorAll('.ac-fan-btn').forEach(b => b.classList.remove('active'));
+      const fan = ac.attributes?.fan_mode || 'auto';
+      const fanBtn = document.querySelector(`.ac-fan-btn[data-fan="${fan}"]`);
+      if (fanBtn) fanBtn.classList.add('active');
+    }
+
+    document.getElementById('toggleAC').addEventListener('click', () => {
+      const isOn = getState(AC_ENTITY) !== 'off';
+      callService('climate', isOn ? 'turn_off' : 'turn_on', { entity_id: AC_ENTITY });
+    });
+    document.getElementById('sliderACTemp').addEventListener('input', function() {
+      document.getElementById('acTempSliderVal').textContent = this.value + '°';
+    });
+    document.getElementById('sliderACTemp').addEventListener('change', function() {
+      callService('climate', 'set_temperature', { entity_id: AC_ENTITY, temperature: parseFloat(this.value) });
+    });
+    document.querySelectorAll('.ac-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        callService('climate', 'set_hvac_mode', { entity_id: AC_ENTITY, hvac_mode: btn.dataset.mode });
+      });
+    });
+    document.querySelectorAll('.ac-fan-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        callService('climate', 'set_fan_mode', { entity_id: AC_ENTITY, fan_mode: btn.dataset.fan });
+      });
+    });
+
+    // === CAMERA TAPO ===
+    const CAM_ENTITY = 'camera.tapo_c202_01fe_hd_stream';
+    let _camPollInterval = null;
+    async function fetchCameraSnapshot() {
+      const stored = JSON.parse(localStorage.getItem('hassTokens') || '{}');
+      const token = stored.access_token || HA_LL_TOKEN;
+      const baseUrl = (location.protocol === 'https:' ? 'https://' : 'http://') +
+        (location.hostname && location.hostname !== 'localhost' ? location.host : '192.168.1.3:8123');
+      try {
+        const res = await fetch(baseUrl + '/api/camera_proxy/' + CAM_ENTITY, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error(res.status);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const img = document.getElementById('cameraStream');
+        const old = img.src;
+        img.src = url;
+        img.style.display = 'block';
+        document.getElementById('cameraStreamError').style.display = 'none';
+        if (old.startsWith('blob:')) URL.revokeObjectURL(old);
+      } catch(e) {
+        document.getElementById('cameraStreamError').textContent = 'Stream non disponibile';
+      }
+    }
+    function openCameraModal() {
+      const motion = getState('binary_sensor.tapo_c202_01fe_motion_alarm');
+      document.getElementById('cameraMotionBadge').textContent = motion === 'on' ? '🔴 Movimento' : '🟢 Nessun movimento';
+      const modal = document.getElementById('cameraModal');
+      modal.style.display = 'flex';
+      fetchCameraSnapshot();
+      _camPollInterval = setInterval(fetchCameraSnapshot, 1000);
+    }
+    function closeCameraModal() {
+      clearInterval(_camPollInterval);
+      const img = document.getElementById('cameraStream');
+      if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+      img.src = ''; img.style.display = 'none';
+      document.getElementById('cameraModal').style.display = 'none';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const cm = document.getElementById('modalCloseCamera');
+      if (cm) cm.addEventListener('click', closeCameraModal);
+      const co = document.getElementById('cameraModal');
+      if (co) co.addEventListener('click', e => { if (e.target === co) closeCameraModal(); });
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const safeBtn = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+      safeBtn('btnCamPrivacy', () => {
+        const isOn = getState('switch.tapo_c202_01fe_privacy') === 'on';
+        callService('switch', isOn ? 'turn_off' : 'turn_on', { entity_id: 'switch.tapo_c202_01fe_privacy' });
+      });
+      safeBtn('btnCamLed', () => {
+        const isOn = getState('switch.tapo_c202_01fe_indicator_led') === 'on';
+        callService('switch', isOn ? 'turn_off' : 'turn_on', { entity_id: 'switch.tapo_c202_01fe_indicator_led' });
+      });
+      safeBtn('btnCamAlarm', () => callService('button', 'press', { entity_id: 'button.tapo_c202_01fe_manual_alarm_start' }));
+      safeBtn('btnCamReboot', () => callService('button', 'press', { entity_id: 'button.tapo_c202_01fe_reboot' }));
+    });
+
+    document.getElementById('toggleTV').addEventListener('click', toggleTV);
+    document.getElementById('toggleLampada').addEventListener('click', () => toggleEntity('light.lampada'));
+    document.getElementById('toggleFaretti').addEventListener('click', () => toggleEntity('switch.shelly1_vela'));
+    document.getElementById('toggleEco').addEventListener('click', () => toggleEntity('switch.ariston_eco_mode'));
+    document.getElementById('toggleBoilerPower').addEventListener('click', () => toggleEntity('switch.ariston_power'));
+    [0,1,2,3].forEach(i => {
+      document.getElementById('toggleOut'+i).addEventListener('click', () => toggleEntity('switch.shellypstripg4_e8f60a617f38_switch_'+i));
+    });
+    document.getElementById('toggleBoilerEnergy').addEventListener('click', () => toggleEntity('switch.shellyplus1pm_4855199a166c_switch_0'));
+    document.getElementById('toggleWasherEnergy').addEventListener('click', () => toggleEntity('switch.shellyplus1pm_4855199d6bb4_switch_0'));
+    document.getElementById('toggleFridgePower').addEventListener('click', () => toggleEntity('switch.shellyplus1pm_cc7b5c826c80'));
+    document.getElementById('toggleXiaomiLight').addEventListener('click', () => toggleEntity('light.yeelight_lamp15_0xeea0715'));
+    document.getElementById('sliderLampada').addEventListener('change', function () { setBrightness(this.value); });
+    document.getElementById('btnCinema').addEventListener('click', () => callService('scene', 'turn_on', { entity_id: 'scene.home_cinema' }));
+    document.getElementById('btnBuonanotte').addEventListener('click', () => callService('automation', 'trigger', { entity_id: 'automation.buonanotte' }));
+    document.getElementById('btnAccendi').addEventListener('click', () => callService('automation', 'trigger', { entity_id: 'automation.new_automation' }));
+    document.getElementById('btnSpegni').addEventListener('click', () => callService('automation', 'trigger', { entity_id: 'automation.new_automation2' }));
+    document.addEventListener('DOMContentLoaded', () => {
+      const safeEl = id => document.getElementById(id);
+      const on = (id, ev, fn) => { const el = safeEl(id); if (el) el.addEventListener(ev, fn); };
+
+      on('modalToggleLampada', 'click', function () {
+        toggleEntity('light.lampada');
+        setTimeout(function () {
+          const s = getState('light.lampada');
+          const lbl = safeEl('modalLampState'); if (lbl) lbl.textContent = s === 'on' ? 'Accesa' : 'Spenta';
+          setToggle('modalToggleLampada', s === 'on');
+        }, 400);
+      });
+      on('modalSliderBright', 'input', function () { const v = safeEl('modalBrightVal'); if (v) v.textContent = Math.round(this.value / 255 * 100) + '%'; });
+      on('modalSliderBright', 'change', function () { callService('light', 'turn_on', { entity_id: 'light.lampada', brightness: parseInt(this.value) }); });
+      on('modalCloseLamp', 'click', closeLampModal);
+      on('modalCloseDoor', 'click', closeDoorModal);
+      on('lampModal', 'click', function (e) { if (e.target === this) closeLampModal(); });
+      on('doorModal', 'click', function (e) { if (e.target === this) closeDoorModal(); });
+    });
+
+    function buildDeviceRow(name, icon, batt) {
+      let color, fillColor;
+      if (batt < 15) { color = 'var(--red)'; fillColor = '#ff6b6b'; }
+      else if (batt < 30) { color = 'var(--orange)'; fillColor = '#ffb874'; }
+      else if (batt < 60) { color = 'var(--primary)'; fillColor = '#adc6ff'; }
+      else { color = 'var(--green)'; fillColor = '#66dd8b'; }
+      const row = document.createElement('div'); row.className = 'device-row';
+      const info = document.createElement('div'); info.className = 'device-info';
+      const iconDiv = document.createElement('div'); iconDiv.className = 'device-icon'; iconDiv.style.color = color;
+      const iconSpan = document.createElement('span'); iconSpan.className = 'material-symbols-outlined'; iconSpan.textContent = icon;
+      iconDiv.appendChild(iconSpan);
+      const textDiv = document.createElement('div');
+      const nameDiv = document.createElement('div'); nameDiv.className = 'device-name'; nameDiv.textContent = name;
+      const stateDiv = document.createElement('div'); stateDiv.className = 'device-state'; stateDiv.textContent = batt + '%';
+      textDiv.appendChild(nameDiv); textDiv.appendChild(stateDiv);
+      info.appendChild(iconDiv); info.appendChild(textDiv);
+      const right = document.createElement('div'); right.style.cssText = 'display:flex;align-items:center;gap:8px;';
+      const bar = document.createElement('div'); bar.className = 'battery-bar';
+      const fill = document.createElement('div'); fill.className = 'battery-fill';
+      fill.style.width = batt + '%'; fill.style.background = fillColor;
+      bar.appendChild(fill);
+      const pct = document.createElement('span');
+      pct.style.cssText = 'font-size:0.75rem;font-weight:800;min-width:30px;text-align:right;'; pct.style.color = color; pct.textContent = batt + '%';
+      right.appendChild(bar); right.appendChild(pct);
+      row.appendChild(info); row.appendChild(right);
+      return row;
+    }
+
+    function updateUI() {
+      const wm = { 'partlycloudy': 'Parzialmente nuvoloso', 'cloudy': 'Nuvoloso', 'sunny': 'Soleggiato', 'clear-night': 'Notte serena', 'rainy': 'Pioggia', 'snowy': 'Neve', 'fog': 'Nebbia', 'lightning': 'Temporale', 'windy': 'Ventoso' };
+      const w = getState('weather.forecast_casa'), wTemp = getAttr('weather.forecast_casa', 'temperature');
+      document.getElementById('weatherState').textContent = (wm[w] || w) + (wTemp ? ' · ' + wTemp + '°C' : '');
+
+      const temp = getState('sensor.hub3_063d_temperatura');
+      const hum = getState('sensor.hub3_063d_umidita');
+      const lux = getState('sensor.hub3_063d_illuminamento');
+      document.getElementById('badgeTemp').textContent = temp !== 'unavailable' ? temp + '°C' : '—°C';
+      document.getElementById('badgeHum').textContent = hum !== 'unavailable' ? hum + '%' : '—%';
+      document.getElementById('badgeLux').textContent = lux !== 'unavailable' ? lux + ' lux' : '— lux';
+
+      const tvState = getState('media_player.sony_2');
+      document.getElementById('tvState').textContent = tvState === 'off' ? 'Spento' : tvState === 'idle' ? 'Idle' : tvState;
+      setToggle('toggleTV', tvState !== 'off');
+
+      const lampState = getState('light.lampada');
+      const lampBright = getAttr('light.lampada', 'brightness') || 0;
+      document.getElementById('lampadaState').textContent = lampState === 'on' ? 'Accesa (' + Math.round(lampBright / 255 * 100) + '%)' : 'Spenta';
+      setToggle('toggleLampada', lampState === 'on');
+      document.getElementById('sliderLampada').value = lampBright;
+      const il = document.getElementById('iconLampada');
+      if (lampState === 'on') { il.style.background = 'rgba(255,184,116,0.15)'; il.style.boxShadow = '0 0 20px rgba(255,184,116,0.2)'; }
+      else { il.style.background = 'rgba(255,255,255,0.05)'; il.style.boxShadow = 'none'; }
+
+      const farState = getState('switch.shelly1_vela');
+      document.getElementById('farettiState').textContent = farState === 'on' ? 'Accesi' : 'Spenti';
+      setToggle('toggleFaretti', farState === 'on');
+
+      const outs = [0, 1, 2, 3].map(i => parseFloat(getState('sensor.shellypstripg4_e8f60a617f38_switch_' + i + '_potenza')) || 0);
+      const boilerP = parseFloat(getState('sensor.shellyplus1pm_4855199a166c_switch_0_power')) || 0;
+      const washP = parseFloat(getState('sensor.shellyplus1pm_4855199d6bb4_switch_0_power')) || 0;
+      const fridgeP2 = parseFloat(getState('sensor.shellyplus1pm_cc7b5c826c80_potenza')) || 0;
+      const total = outs.reduce((a, b) => a + b, 0) + boilerP + washP + fridgeP2;
+      const arc = 326.7, pct = Math.min(total / 3500, 1);
+      const gc = pct < 0.5 ? 'var(--green)' : pct < 0.8 ? 'var(--orange)' : 'var(--red)';
+      const ring = document.getElementById('powerRing');
+      ring.style.strokeDashoffset = arc * (1 - pct); ring.style.stroke = gc;
+      const pn = document.getElementById('powerNum'); pn.textContent = total.toFixed(0); pn.style.color = gc;
+      outs.forEach((v, i) => {
+        const sw = getState('switch.shellypstripg4_e8f60a617f38_switch_' + i);
+        const isOn = sw === 'on';
+        const el = document.getElementById('out' + i);
+        el.textContent = v.toFixed(1) + 'W';
+        el.style.color = !isOn ? 'var(--text-muted)' : v > 0 ? 'var(--green)' : 'var(--cyan)';
+        setToggle('toggleOut' + i, isOn);
+      });
+      const boilerSw = getState('switch.ariston_power');
+      document.getElementById('boilerPower').textContent = boilerP.toFixed(0) + 'W';
+      document.getElementById('boilerPowerState').textContent = boilerSw !== 'on' ? 'Spento' : boilerP > 100 ? 'In riscaldamento' : 'Standby';
+      setToggle('toggleBoilerPower', boilerSw === 'on');
+      setToggle('toggleBoilerEnergy', getState('switch.shellyplus1pm_4855199a166c_switch_0') === 'on');
+
+      const washerSw = getState('switch.shellyplus1pm_4855199d6bb4_switch_0');
+      document.getElementById('washerPower').textContent = washP.toFixed(0) + 'W';
+      document.getElementById('washerState').textContent = washerSw !== 'on' ? 'Spenta' : washP > 10 ? 'In funzione' : 'Standby';
+      document.getElementById('washerPower').style.color = washerSw !== 'on' ? 'var(--text-muted)' : washP > 10 ? 'var(--primary)' : 'var(--cyan)';
+      setToggle('toggleWasherEnergy', washerSw === 'on');
+
+      const fridgeSw = getState('switch.shellyplus1pm_cc7b5c826c80');
+      const fridgeP = parseFloat(getState('sensor.shellyplus1pm_cc7b5c826c80_potenza')) || 0;
+      document.getElementById('fridgePower').textContent = fridgeP.toFixed(0) + 'W';
+      document.getElementById('fridgeState').textContent = fridgeSw !== 'on' ? 'Spento' : fridgeP > 5 ? 'In raffreddamento' : 'In pausa';
+      setToggle('toggleFridgePower', fridgeSw === 'on');
+
+      const bt = getState('sensor.ariston_proc_req_temp');
+      const bm = getState('water_heater.scaldabagno');
+      const sc = getState('sensor.ariston_average_showers');
+      const al = getState('switch.ariston_anti_legionella');
+      document.getElementById('boilerTemp').textContent = (bt !== 'unavailable' ? bt : '—') + '°';
+      document.getElementById('boilerMode').textContent = bm !== 'unavailable' ? bm : '—';
+      document.getElementById('showers').textContent = sc !== 'unavailable' ? sc : '—';
+      document.getElementById('antiLeg').textContent = al === 'on' ? 'ON' : 'OFF';
+      const tv = parseFloat(bt) || 0;
+      document.getElementById('tempRing').style.strokeDashoffset = arc - (tv / 80) * arc;
+      setToggle('toggleEco', getState('switch.ariston_eco_mode') === 'on');
+
+      const doorSt = getState('binary_sensor.shelly_blu_door_window_8cd3_window');
+      const motSt = getState('binary_sensor.hub3_063d');
+      const sb = getState('sensor.shelly_blu_door_window_8cd3_battery');
+      document.getElementById('doorState').textContent = doorSt === 'off' ? 'Chiusa' : 'Aperta!';
+      document.getElementById('doorBadge').textContent = doorSt === 'off' ? 'CHIUSA' : 'APERTA';
+      document.getElementById('doorBadge').className = doorSt === 'off' ? 'badge badge-green' : 'badge badge-red';
+      document.getElementById('motionState').textContent = motSt === 'on' ? 'Movimento rilevato!' : 'Nessun movimento';
+      document.getElementById('motionBadge').textContent = motSt === 'on' ? 'ATTIVO' : 'OK';
+      document.getElementById('motionBadge').className = motSt === 'on' ? 'badge badge-cyan' : 'badge';
+      document.getElementById('luxState').textContent = lux + ' lux';
+      document.getElementById('luxBadge').textContent = lux + ' lux';
+      document.getElementById('sensorBattState').textContent = sb + '%';
+      document.getElementById('sensorBattBadge').textContent = sb + '%';
+
+      const xiaomiSt = getState('light.yeelight_lamp15_0xeea0715');
+      document.getElementById('xiaomiLightState').textContent = xiaomiSt === 'on' ? 'Accesa' : 'Spenta';
+      setToggle('toggleXiaomiLight', xiaomiSt === 'on');
+
+      const ps = getState('person.igor');
+      document.getElementById('personState').textContent = ps === 'home' ? 'In casa' : ps;
+      document.getElementById('personDot').style.background = ps === 'home' ? 'var(--green)' : 'var(--red)';
+
+      const devices = [
+        { name: 'Pixel 8a', entity: 'sensor.pixel_8a_battery_level', icon: 'smartphone' },
+        { name: 'Pixel 8 Pro', entity: 'sensor.pixel_8_pro_battery_level', icon: 'smartphone' },
+        { name: 'Pixel 8', entity: 'sensor.pixel_8_battery_level', icon: 'smartphone' },
+        { name: 'iPad di Davide', entity: 'sensor.ipad_di_davide_battery_level', icon: 'tablet_mac' }
+      ];
+      const dc = document.getElementById('devicesContainer');
+      while (dc.firstChild) dc.removeChild(dc.firstChild);
+      devices.forEach(d => dc.appendChild(buildDeviceRow(d.name, d.icon, parseInt(getState(d.entity)) || 0)));
+
+      if (window.update3D) window.update3D(states);
+      updateACCard(states);
+    }
+
+    function connect() {
+      if (authFailed) return;
+      const token = getHAToken();
+      ws = new WebSocket(HA_WS_URL);
+      ws.onmessage = function (evt) {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'auth_required') ws.send(JSON.stringify({ type: 'auth', access_token: token }));
+        else if (msg.type === 'auth_ok') {
+          const el = document.getElementById('connStatus');
+          el.className = 'conn-status connected'; el.textContent = 'Connesso';
+          send('subscribe_events', { event_type: 'state_changed' });
+          send('get_states', {}, function (result) {
+            for (let i = 0; i < result.length; i++) states[result[i].entity_id] = result[i];
+            updateUI();
+          });
+        }
+        else if (msg.type === 'auth_invalid') {
+          authFailed = true;
+          const el = document.getElementById('connStatus');
+          el.className = 'conn-status disconnected'; el.textContent = 'Token non valido';
+        }
+        else if (msg.type === 'result' && msg.success && pendingCallbacks[msg.id]) {
+          pendingCallbacks[msg.id](msg.result); delete pendingCallbacks[msg.id];
+        }
+        else if (msg.type === 'event' && msg.event && msg.event.event_type === 'state_changed') {
+          const d = msg.event.data;
+          if (d.new_state) { states[d.entity_id] = d.new_state; updateUI(); }
+        }
+      };
+      ws.onclose = function () {
+        const el = document.getElementById('connStatus');
+        el.className = 'conn-status disconnected'; el.textContent = 'Disconnesso';
+        if (!authFailed) setTimeout(connect, 5000);
+      };
+      ws.onerror = function () { ws.close(); };
+    }
+    connect();
+  </script>
+
+  <!-- ============== Three.js scene ============== -->
+  <script type="module">
+    let THREE, OrbitControls;
+    try {
+      THREE = await import('three');
+      ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+    } catch (err) {
+      document.getElementById('sceneErrorMsg').textContent = String(err && err.message || err);
+      document.getElementById('sceneError').classList.add('show');
+      document.getElementById('sceneLoading').classList.add('hidden');
+      console.error('Three.js load failed:', err); throw err;
+    }
+
+    const W = 100, D = 80, WALL_H = 12;
+    const pctCenter = (top, left, w, h) => ({ x: (left + w / 2) / 100 * W, z: (top + h / 2) / 100 * D, w: w / 100 * W, d: h / 100 * D });
+    const pctPoint = (top, left) => ({ x: left / 100 * W, z: top / 100 * D });
+    const ZONES = [
+      // Proporzioni ricavate dalla planimetria reale (image.png)
+      { id: 'camera2',   label: 'Camera 2',  top: 4,  left: 12, w: 43, h: 36, color: 0x1c2347 },
+      { id: 'soggiorno', label: 'Soggiorno', top: 4,  left: 57, w: 43, h: 36, color: 0x222a52 },
+      { id: 'camera',    label: 'Camera',    top: 43, left: 0,  w: 38, h: 52, color: 0x1c2347 },
+      { id: 'bagno',     label: 'Bagno',     top: 43, left: 40, w: 15, h: 33, color: 0x1a2742 },
+      { id: 'cucina',    label: 'Cucina',    top: 43, left: 57, w: 17, h: 33, color: 0x222a52 },
+      { id: 'pranzo',    label: 'Soggiorno', top: 43, left: 76, w: 24, h: 33, color: 0x222a52 },
+      { id: 'veranda',   label: 'Veranda',   top: 80, left: 40, w: 60, h: 14, color: 0x1a3b32 },
+    ];
+
+    const canvas = document.getElementById('sceneCanvas');
+    const wrap = document.getElementById('sceneWrap');
+
+    const scene = new THREE.Scene();
+    scene.background = null;
+    scene.fog = new THREE.Fog(0x0a0a1c, 200, 320);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.4;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 800);
+    const ROOM_CENTER = new THREE.Vector3(W / 2, 0, D / 2);
+    const DEFAULT_POS = new THREE.Vector3(W / 2 + 95, 105, D / 2 + 100);
+    camera.position.copy(DEFAULT_POS);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.target.copy(ROOM_CENTER);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.minDistance = 20; controls.maxDistance = 400;
+    controls.minPolarAngle = 0.05; controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.enablePan = true;
+    controls.screenSpacePanning = false;
+    controls.panSpeed = 1.5;
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.PAN,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.ROTATE
+    };
+    controls.touches = {
+      ONE: THREE.TOUCH.PAN,
+      TWO: THREE.TOUCH.DOLLY_ROTATE
+    };
+
+    scene.add(new THREE.AmbientLight(0x8898cc, 0.7));
+    scene.add(new THREE.HemisphereLight(0x99bbff, 0x223344, 0.85));
+    const keyLight = new THREE.DirectionalLight(0xc8dcff, 1.15);
+    keyLight.position.set(W / 2 + 50, 130, D / 2 + 60);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.camera.near = 1; keyLight.shadow.camera.far = 280;
+    keyLight.shadow.camera.left = -100; keyLight.shadow.camera.right = 100;
+    keyLight.shadow.camera.top = 100; keyLight.shadow.camera.bottom = -100;
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+    const fill = new THREE.DirectionalLight(0x6688cc, 0.35);
+    fill.position.set(-30, 80, -30); scene.add(fill);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.6, D * 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x14152e, roughness: 0.85, metalness: 0.05 }));
+    floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, -0.05, D / 2); floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(Math.max(W, D) * 1.6, 28, 0x2a3060, 0x1a2040);
+    grid.position.set(W / 2, 0, D / 2);
+    grid.material.transparent = true; grid.material.opacity = 0.35;
+    scene.add(grid);
+
+    ZONES.forEach(z => {
+      const c = pctCenter(z.top, z.left, z.w, z.h);
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(c.w * 0.97, c.d * 0.97),
+        new THREE.MeshStandardMaterial({ color: z.color, roughness: 0.9, transparent: true, opacity: 0.95 })
+      );
+      m.rotation.x = -Math.PI / 2; m.position.set(c.x, 0.05, c.z); m.receiveShadow = true; scene.add(m);
+      const edge = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(c.w * 0.97, c.d * 0.97)),
+        new THREE.LineBasicMaterial({ color: z.id === 'veranda' ? 0x66dd8b : 0xadc6ff, transparent: true, opacity: 0.22 })
+      );
+      edge.rotation.x = -Math.PI / 2; edge.position.set(c.x, 0.06, c.z);
+      scene.add(edge);
+    });
+
+    function makeTextSprite(text, color, size = 64, weight = 700) {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = color; ctx.font = `${weight} ${size}px Inter, sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 16;
+      ctx.fillText(text.toUpperCase(), cv.width / 2, cv.height / 2);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+      return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+    }
+    ZONES.forEach(z => {
+      const c = pctCenter(z.top, z.left, z.w, z.h);
+      const sp = makeTextSprite(z.label, z.id === 'veranda' ? '#88e6a8aa' : '#9aa6d8aa');
+      sp.scale.set(20, 5, 1); sp.position.set(c.x, 0.5, c.z);
+      scene.add(sp);
+    });
+
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x141833, roughness: 0.9, metalness: 0.05 });
+    const wallBack = new THREE.Mesh(new THREE.BoxGeometry(W, WALL_H, 0.6), wallMat);
+    wallBack.position.set(W / 2, WALL_H / 2, -0.3); wallBack.castShadow = true; wallBack.receiveShadow = true;
+    scene.add(wallBack);
+    const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.6, WALL_H, D), wallMat);
+    wallLeft.position.set(-0.3, WALL_H / 2, D / 2); wallLeft.castShadow = true; wallLeft.receiveShadow = true;
+    scene.add(wallLeft);
+    const baseLine = new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, 0.18),
+      new THREE.MeshBasicMaterial({ color: 0x4b8eff, transparent: true, opacity: 0.22 }));
+    baseLine.position.set(W / 2, 0.1, 0.05); scene.add(baseLine);
+    const baseLine2 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, D),
+      new THREE.MeshBasicMaterial({ color: 0x4b8eff, transparent: true, opacity: 0.22 }));
+    baseLine2.position.set(0.05, 0.1, D / 2); scene.add(baseLine2);
+
+    const interactives = [];
+    const devices3D = {};
+
+    // TV
+    {
+      const p = pctPoint(3, 70);
+      const tvW = 14, tvH = 8, tvT = 0.7;
+      const grp = new THREE.Group();
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(tvW, tvH, tvT),
+        new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.5, metalness: 0.4 }));
+      frame.castShadow = true; grp.add(frame);
+      const screenMat = new THREE.MeshStandardMaterial({ color: 0x05060e, emissive: 0x000000, emissiveIntensity: 0, roughness: 0.25 });
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(tvW * 0.92, tvH * 0.85), screenMat);
+      screen.position.z = tvT / 2 + 0.01; grp.add(screen);
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0x4a90ff, transparent: true, opacity: 0, depthWrite: false });
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(tvW * 1.15, tvH * 1.15), glowMat);
+      glow.position.z = tvT / 2 + 0.005; grp.add(glow);
+      // Spotlight puntato verso il divano (x=70, z=19)
+      const tvSpot = new THREE.SpotLight(0x4a90ff, 0, 32, Math.PI / 3, 0.6, 1.4);
+      tvSpot.position.set(p.x, 9, p.z + 0.7);
+      tvSpot.target.position.set(p.x, 0, p.z + 10);
+      scene.add(tvSpot); scene.add(tvSpot.target);
+      // Luce ambiente TV → divano (blu freddo, proiettata nella stanza)
+      const tvAmbient = new THREE.PointLight(0x2255aa, 0, 60, 1.2);
+      tvAmbient.position.set(p.x, 7, p.z + 3);
+      scene.add(tvAmbient);
+      grp.position.set(p.x, 9, 0.7); scene.add(grp);
+      devices3D.tv = { screenMat, glowMat, spot: tvSpot, ambient: tvAmbient };
+      interactives.push({ mesh: frame, kind: 'tv', tooltip: () => 'Sony TV' });
+      interactives.push({ mesh: screen, kind: 'tv', tooltip: () => 'Sony TV' });
+    }
+
+    // Divano — grigio chiaro, gambe legno, posto sx allungato
+    {
+      const p = pctPoint(24, 70);
+      const grp = new THREE.Group();
+      const fab  = new THREE.MeshStandardMaterial({ color: 0xb4b4ac, roughness: 0.93 });
+      const fab2 = new THREE.MeshStandardMaterial({ color: 0xa4a49c, roughness: 0.95 });
+      const wood = new THREE.MeshStandardMaterial({ color: 0xc8a96e, roughness: 0.55 });
+
+      const SW = 11.7, SD = 5.0, SH = 2;   // seduta principale
+      const EXT = 4.5;                       // estensione posto sx (chaise integrata)
+      const seatW = SW / 3;               // larghezza singolo posto
+
+      // Corpo seduta principale
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(SW, SH, SD), fab);
+      seat.position.set(0, SH / 2, 0); seat.castShadow = true; seat.receiveShadow = true; grp.add(seat);
+
+      // Estensione posto sx (raddoppia la profondità)
+      const ext = new THREE.Mesh(new THREE.BoxGeometry(seatW, SH, EXT), fab);
+      ext.position.set(-SW / 2 + seatW / 2, SH / 2, -(SD + EXT) / 2);
+      ext.castShadow = true; ext.receiveShadow = true; grp.add(ext);
+
+      // Schienale principale
+      const back = new THREE.Mesh(new THREE.BoxGeometry(SW, 4, 1), fab);
+      back.position.set(0, SH + 2, SD / 2 - 0.5); back.castShadow = true; grp.add(back);
+
+      // Bracciolo sinistro
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, SD), fab);
+      armL.position.set(-SW / 2 - 0.5, 1.75, 0); armL.castShadow = true; grp.add(armL);
+
+      // Bracciolo destro
+      const armR = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, SD), fab);
+      armR.position.set(SW / 2 + 0.5, 1.75, 0); armR.castShadow = true; grp.add(armR);
+
+      // Cuscini seduta (3) — il primo a sx copre anche l'estensione
+      for (let i = 0; i < 3; i++) {
+        const cD = i === 0 ? SD + EXT - 1 : SD - 1.5;
+        const cZ = i === 0 ? -(EXT / 2) - 0.3 : -0.3;
+        const c = new THREE.Mesh(new THREE.BoxGeometry(seatW - 0.5, 0.9, cD), fab2);
+        c.position.set(-SW / 2 + (i + 0.5) * seatW, SH + 0.45, cZ);
+        c.castShadow = true; grp.add(c);
+      }
+
+      // Gambe (cilindri legno)
+      [[-SW/2+1, -SD/2+1], [SW/2-1, -SD/2+1], [-SW/2+1, SD/2-1], [SW/2-1, SD/2-1],
+       [-SW/2+seatW-1, -(SD+EXT)+1]
+      ].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.6, 8), wood);
+        leg.position.set(lx, 0.8, lz); leg.castShadow = true; grp.add(leg);
+      });
+
+      grp.rotation.y = 0;
+      grp.position.set(p.x, 0, p.z);
+      scene.add(grp);
+    }
+
+    // Letto
+    {
+      const c = pctCenter(59, 16, 18, 32);
+      const grp = new THREE.Group();
+      const wood = new THREE.MeshStandardMaterial({ color: 0x2a2845, roughness: 0.7 });
+      const base = new THREE.Mesh(new THREE.BoxGeometry(c.w, 1, c.d), wood);
+      base.position.y = 0.5; base.castShadow = true; base.receiveShadow = true; grp.add(base);
+      const matt = new THREE.Mesh(new THREE.BoxGeometry(c.w * 0.95, 1.2, c.d * 0.95),
+        new THREE.MeshStandardMaterial({ color: 0x4a4a78, roughness: 0.85 }));
+      matt.position.y = 1.6; matt.castShadow = true; grp.add(matt);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(c.w, 4, 2.5), wood);
+      head.position.set(0, 2, -c.d / 2 + 0.25); head.castShadow = true; grp.add(head);
+      for (let i = 0; i < 2; i++) {
+        const pl = new THREE.Mesh(new THREE.BoxGeometry(c.w / 2 - 0.5, 0.5, c.d / 3),
+          new THREE.MeshStandardMaterial({ color: 0xd8dbeb, roughness: 0.9 }));
+        pl.position.set(-c.w / 4 + i * c.w / 2, 2.5, -c.d / 3); pl.castShadow = true; grp.add(pl);
+      }
+      grp.rotation.y = -Math.PI / 2;
+      grp.position.set(c.x, 0, c.z); scene.add(grp);
+    }
+
+    // Lampada Arco (Flos) — base marmo nero, braccio cromato ad arco, cupola cromata
+    {
+      const p = pctPoint(27, 61);
+      const grp = new THREE.Group();
+      const chrome = new THREE.MeshStandardMaterial({ color: 0xd0d8e0, roughness: 0.08, metalness: 0.95 });
+      const marble = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.4, metalness: 0.05 });
+
+      // Base marmo nero rettangolare
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.5, 1.6), marble);
+      base.position.y = 1.75; base.castShadow = true; base.receiveShadow = true; grp.add(base);
+
+      // Palo verticale cromato
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 9, 12), chrome);
+      pole.position.y = 4.5 + 3.5; pole.castShadow = true; grp.add(pole);
+
+      // Arco — simulato con segmenti curvi
+      const arcR = 9, arcSegs = 10;
+      for (let i = 0; i < arcSegs; i++) {
+        const a0 = (i / arcSegs) * (Math.PI / 2);
+        const a1 = ((i + 1) / arcSegs) * (Math.PI / 2);
+        const x0 = Math.sin(a0) * arcR, y0 = Math.cos(a0) * arcR;
+        const x1 = Math.sin(a1) * arcR, y1 = Math.cos(a1) * arcR;
+        const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+        const len = Math.sqrt((x1-x0)**2 + (y1-y0)**2);
+        const ang = Math.atan2(x1-x0, y1-y0);
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, len, 8), chrome);
+        seg.position.set(mx, my + 9, 0);
+        seg.rotation.z = ang;
+        seg.castShadow = true; grp.add(seg);
+      }
+
+      // Paralume a cupola (semisfera cromata, aperta verso il basso)
+      const shadeMat = new THREE.MeshStandardMaterial({ color: 0xc8d4e0, emissive: 0xffcc88, emissiveIntensity: 0, roughness: 0.08, metalness: 0.9, side: THREE.DoubleSide });
+      const shade = new THREE.Mesh(new THREE.SphereGeometry(2.0, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), shadeMat);
+      shade.position.set(arcR, 9, 0);
+      shade.castShadow = true; grp.add(shade);
+
+      // Bulbo interno (visibile quando acceso)
+      const bulbMat = new THREE.MeshBasicMaterial({ color: 0x332200 });
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8), bulbMat);
+      bulb.position.set(arcR, 8.8, 0); grp.add(bulb);
+
+      // Luce punto
+      const pl = new THREE.PointLight(0xffcc77, 0, 40, 1.5);
+      pl.position.set(arcR, 8.5, 0); grp.add(pl);
+
+      // Hit area
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.set(arcR, 9, 0); grp.add(hit);
+
+      grp.rotation.y = Math.PI / 4;
+      grp.position.set(p.x, 0, p.z); scene.add(grp);
+      devices3D.lampada = { shadeMat, bulbMat, light: pl };
+      interactives.push({ mesh: hit, kind: 'lampada', tooltip: () => 'Lampada Arco (tieni premuto per controlli)' });
+      interactives.push({ mesh: shade, kind: 'lampada', tooltip: () => 'Lampada Arco' });
+    }
+
+    // Faretti — larger housing & hit area for easier interaction
+    {
+      const positions = [pctPoint(8, 64), pctPoint(8, 76), pctPoint(8, 88)];
+      devices3D.faretti = [];
+      positions.forEach(p => {
+        const grp = new THREE.Group();
+        // Larger housing
+        const housing = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 1.0, 24),
+          new THREE.MeshStandardMaterial({ color: 0x2a2a48, roughness: 0.35, metalness: 0.7 }));
+        housing.castShadow = true; grp.add(housing);
+        // Glowing ring around lens
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0x444466, emissive: 0xffd6a0, emissiveIntensity: 0, roughness: 0.3, metalness: 0.5 });
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.15, 8, 24), ringMat);
+        ring.rotation.x = Math.PI / 2; ring.position.y = -0.5; grp.add(ring);
+        // Larger lens
+        const lensMat = new THREE.MeshStandardMaterial({ color: 0x333355, emissive: 0xffd6a0, emissiveIntensity: 0, roughness: 0.15, metalness: 0.4 });
+        const lens = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), lensMat);
+        lens.rotation.x = Math.PI / 2; lens.position.y = -0.5; grp.add(lens);
+        const sp = new THREE.SpotLight(0xffe1b8, 0, 30, Math.PI / 3.5, 0.5, 1.2);
+        sp.target.position.set(0, -14, 0); grp.add(sp); grp.add(sp.target);
+        // Much larger hit area
+        const hit = new THREE.Mesh(new THREE.SphereGeometry(4, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+        grp.add(hit);
+        grp.position.set(p.x, WALL_H + 0.5, p.z); scene.add(grp);
+        devices3D.faretti.push({ lensMat, ringMat, light: sp });
+        interactives.push({ mesh: hit, kind: 'faretti', tooltip: () => 'Faretti' });
+        interactives.push({ mesh: lens, kind: 'faretti', tooltip: () => 'Faretti' });
+      });
+    }
+
+    // Boiler — Ariston Velis: serbatoio verticale bianco ovale, fasce grigio scuro, display
+    {
+      const p = pctPoint(84, 57);
+      const grp = new THREE.Group();
+      const white  = new THREE.MeshStandardMaterial({ color: 0xf2f2f0, roughness: 0.25, metalness: 0.05 });
+      const darkCap = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.3, metalness: 0.4 });
+      const chrome = new THREE.MeshStandardMaterial({ color: 0x888898, roughness: 0.2, metalness: 0.7 });
+
+      const H = 9, R = 2.2;   // altezza corpo, raggio
+
+      // Corpo principale bianco (cilindro con tappi arrotondati)
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 32), white);
+      body.position.y = H / 2; body.castShadow = true; body.receiveShadow = true; grp.add(body);
+
+      // Cupola superiore
+      const topDome = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), white);
+      topDome.position.y = H; grp.add(topDome);
+
+      // Cupola inferiore
+      const botDome = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), white);
+      botDome.position.y = 0; grp.add(botDome);
+
+      // Fascia superiore grigio scuro
+      const capTop = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.05, R + 0.05, 0.7, 32), darkCap);
+      capTop.position.y = H - 0.1; grp.add(capTop);
+
+      // Fascia inferiore grigio scuro
+      const capBot = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.05, R + 0.05, 0.9, 32), darkCap);
+      capBot.position.y = 0.5; grp.add(capBot);
+
+      // Striscia cromata verticale centrale (indicatore)
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.18, H * 0.35, 0.05), chrome);
+      stripe.position.set(0, H * 0.65, R + 0.01); grp.add(stripe);
+
+      // Display/pannello in basso (piccolo rettangolo scuro con LED)
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.2, metalness: 0.5 }));
+      panel.position.set(0, 0.9, R + 0.02); grp.add(panel);
+
+      // LED display (emissivo quando acceso)
+      const ledMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, emissive: 0xff6600, emissiveIntensity: 0, roughness: 0.3 });
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.04), ledMat);
+      led.position.set(0, 0.9, R + 0.05); grp.add(led);
+
+      // Hit area
+      const hit = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.5, R + 0.5, H + 2, 16), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.y = H / 2; grp.add(hit);
+
+      grp.position.set(p.x, 0, p.z); scene.add(grp);
+
+      // Sprite info boiler (temperatura + docce)
+      const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 160;
+      const bctx = bcv.getContext('2d');
+      const btex = new THREE.CanvasTexture(bcv); btex.colorSpace = THREE.SRGBColorSpace;
+      const bplane = new THREE.Mesh(
+        new THREE.PlaneGeometry(9, 5.6),
+        new THREE.MeshBasicMaterial({ map: btex, transparent: true, depthWrite: false, side: THREE.DoubleSide })
+      );
+      bplane.position.set(p.x - 7, 8, p.z);
+      bplane.rotation.y = 0;
+      scene.add(bplane);
+      function updateBoilerSprite(temp, showers) {
+        bctx.clearRect(0, 0, bcv.width, bcv.height);
+        bctx.shadowColor = 'rgba(0,0,0,0.8)'; bctx.shadowBlur = 10;
+        bctx.textBaseline = 'top';
+        // Temperatura
+        bctx.fillStyle = '#ff9944'; bctx.font = '800 80px Inter';
+        bctx.textAlign = 'center';
+        bctx.fillText((temp !== 'unavailable' ? temp : '—') + '°', 128, 4);
+        // Docce
+        bctx.fillStyle = '#64dfdf'; bctx.font = '600 44px Inter';
+        bctx.fillText('🚿 ' + (showers !== 'unavailable' ? showers : '—'), 128, 100);
+        btex.needsUpdate = true;
+      }
+      updateBoilerSprite('—', '—');
+      devices3D.boiler = { ledMat, updateSprite: updateBoilerSprite };
+      interactives.push({ mesh: hit, kind: 'boiler', tooltip: () => 'Scaldabagno Ariston Velis' });
+    }
+
+    // Lavatrice
+    {
+      const p = pctPoint(91, 44);
+      const grp = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(4, 4.5, 4),
+        new THREE.MeshStandardMaterial({ color: 0xe8eaf2, roughness: 0.3, metalness: 0.5 }));
+      body.position.y = 2.25; body.castShadow = true; grp.add(body);
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x222244, emissive: 0x000000, emissiveIntensity: 0, roughness: 0.15, metalness: 0.6 });
+      const door = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), doorMat);
+      door.position.set(0, 2.25, 2.01); grp.add(door);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.15, 8, 24),
+        new THREE.MeshStandardMaterial({ color: 0x999, roughness: 0.4, metalness: 0.7 }));
+      ring.position.set(0, 2.25, 1.95); grp.add(ring);
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(2.9, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.y = 2.25; grp.add(hit);
+      grp.position.set(p.x, 0, p.z); grp.rotation.y = Math.PI / 2; scene.add(grp);
+      devices3D.washer = { doorMat };
+      interactives.push({ mesh: hit, kind: 'washer', tooltip: () => 'Lavatrice' });
+      interactives.push({ mesh: door, kind: 'washer', tooltip: () => 'Lavatrice' });
+    }
+
+    // Frigo Bosch — two-compartment fridge-freezer, stainless steel
+    {
+      const p = pctPoint(47, 71);
+      const grp = new THREE.Group();
+      const FRIDGE_W = 4, FRIDGE_D = 3.8, FRIDGE_H = WALL_H - 1;
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc4, roughness: 0.3, metalness: 0.75 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(FRIDGE_W, FRIDGE_H, FRIDGE_D), steelMat);
+      body.position.y = FRIDGE_H / 2; body.castShadow = true; body.receiveShadow = true; grp.add(body);
+      // Top door (fridge)
+      const topDoorH = FRIDGE_H * 0.6;
+      const topDoor = new THREE.Mesh(new THREE.BoxGeometry(FRIDGE_W * 0.98, topDoorH - 0.2, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0xc2c6ce, roughness: 0.25, metalness: 0.8 }));
+      topDoor.position.set(0, FRIDGE_H - topDoorH / 2, FRIDGE_D / 2 + 0.08); grp.add(topDoor);
+      // Bottom door (freezer)
+      const botDoorH = FRIDGE_H * 0.38;
+      const botDoor = new THREE.Mesh(new THREE.BoxGeometry(FRIDGE_W * 0.98, botDoorH - 0.2, 0.15),
+        new THREE.MeshStandardMaterial({ color: 0xbabec6, roughness: 0.25, metalness: 0.8 }));
+      botDoor.position.set(0, botDoorH / 2 + 0.1, FRIDGE_D / 2 + 0.08); grp.add(botDoor);
+      // Gap line
+      const gapLine = new THREE.Mesh(new THREE.BoxGeometry(FRIDGE_W * 1.01, 0.12, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6, metalness: 0.3 }));
+      gapLine.position.set(0, FRIDGE_H * 0.38 + 0.1, FRIDGE_D / 2 + 0.05); grp.add(gapLine);
+      // Handles
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.3, metalness: 0.9 });
+      const handleTop = new THREE.Mesh(new THREE.BoxGeometry(0.12, topDoorH * 0.6, 0.3), handleMat);
+      handleTop.position.set(-FRIDGE_W / 2 + 0.25, FRIDGE_H - topDoorH / 2, FRIDGE_D / 2 + 0.28); grp.add(handleTop);
+      const handleBot = new THREE.Mesh(new THREE.BoxGeometry(0.12, botDoorH * 0.5, 0.3), handleMat);
+      handleBot.position.set(-FRIDGE_W / 2 + 0.25, botDoorH / 2 + 0.1, FRIDGE_D / 2 + 0.28); grp.add(handleBot);
+      // Bosch logo badge
+      const badge = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 0.05),
+        new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.4, metalness: 0.2 }));
+      badge.position.set(FRIDGE_W / 2 - 0.8, FRIDGE_H - 0.6, FRIDGE_D / 2 + 0.16); grp.add(badge);
+
+      // LED status frigo — verde standby, ciano pulsante quando compressore attivo
+      const fridgeLedMat = new THREE.MeshStandardMaterial({
+        color: 0x00cc44, emissive: 0x00cc44, emissiveIntensity: 0.6, roughness: 0.2
+      });
+      const fridgeLed = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), fridgeLedMat);
+      fridgeLed.position.set(FRIDGE_W / 2 - 0.25, 0.5, FRIDGE_D / 2 + 0.1); grp.add(fridgeLed);
+
+      // Piccola luce PointLight che proietta un bagliore quando raffredda
+      const fridgeGlow = new THREE.PointLight(0x00aaff, 0, 8, 2);
+      fridgeGlow.position.set(FRIDGE_W / 2, 0.5, FRIDGE_D / 2 + 0.5); grp.add(fridgeGlow);
+
+      grp.position.set(p.x, 0, p.z); scene.add(grp);
+      devices3D.fridge = { ledMat: fridgeLedMat, glow: fridgeGlow };
+    }
+
+    // Scrivania + Yeelight Screenbar (Camera 2) - Fredde Style
+    {
+      const p = pctPoint(36, 19);
+      const grp = new THREE.Group();
+      grp.rotation.y = Math.PI;
+
+      const deskMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.8, metalness: 0.1 });
+
+      // Main desktop
+      const desktop = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 4.5), deskMat);
+      desktop.position.y = 4.0; desktop.castShadow = true; desktop.receiveShadow = true; grp.add(desktop);
+
+      // Vertical side panels / legs
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7.8, 4), deskMat);
+      legL.position.set(-3.85, 3.9, 0); grp.add(legL);
+      const legR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7.8, 4), deskMat);
+      legR.position.set(3.85, 3.9, 0); grp.add(legR);
+
+      // Top shelf
+      const topShelf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 2.5), deskMat);
+      topShelf.position.set(0, 6.5, -1.0); grp.add(topShelf);
+
+      // Side wings (speaker shelves)
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 2), deskMat);
+      wingL.position.set(-5.0, 5.0, 0); grp.add(wingL);
+      const wingR = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 2), deskMat);
+      wingR.position.set(5.0, 5.0, 0); grp.add(wingR);
+
+      // Monitor
+      const monitorMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.3, metalness: 0.8 });
+      const monitor = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.8, 0.15), monitorMat);
+      monitor.position.set(0, 5.5, -0.6); grp.add(monitor);
+      const monitorStand = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 1.2), deskMat);
+      monitorStand.position.set(0, 4.1, -1.2); grp.add(monitorStand);
+      const monitorNeck = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.4, 0.4), deskMat);
+      monitorNeck.position.set(0, 4.8, -1.2); grp.add(monitorNeck);
+
+      // Yeelight Screenbar (on top of monitor)
+      const lampBaseMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.2 });
+      const lampBar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 16), lampBaseMat);
+      lampBar.rotation.z = Math.PI / 2;
+      lampBar.position.set(0, 6.95, -0.5); grp.add(lampBar);
+
+      const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe1b8 });
+      const bulb = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.05, 0.1), bulbMat);
+      bulb.position.set(0, 6.89, -0.5); grp.add(bulb);
+
+      const pl = new THREE.PointLight(0xffaa55, 0, 30, 2);
+      pl.position.set(0, 6.8, -0.5); grp.add(pl);
+
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(5.0, 4.0, 3.0), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.set(0, 5.5, -0.5); grp.add(hit);
+
+      grp.position.set(p.x, 0, p.z); scene.add(grp);
+      devices3D.xiaomiLight = { bulbMat, light: pl };
+      interactives.push({ mesh: hit, kind: 'xiaomi', tooltip: () => 'Yeelight Screenbar' });
+      interactives.push({ mesh: bulb, kind: 'xiaomi', tooltip: () => 'Yeelight Screenbar' });
+    }
+
+    // Sockets
+    {
+      const positions = [pctPoint(45, 58), pctPoint(45, 61), pctPoint(45, 64), pctPoint(45, 67)];
+      devices3D.sockets = [];
+      positions.forEach((p, i) => {
+        const grp = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 2),
+          new THREE.MeshStandardMaterial({ color: 0x1a1a30, roughness: 0.7, metalness: 0.3 }));
+        base.position.y = 0.25; base.castShadow = true; grp.add(base);
+        const ledMat = new THREE.MeshStandardMaterial({ color: 0x111, emissive: 0x3d3d5c, emissiveIntensity: 0.5 });
+        const led = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), ledMat);
+        led.position.y = 0.7; grp.add(led);
+        const hit = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+        hit.position.y = 0.5; grp.add(hit);
+        grp.position.set(p.x, 0, p.z); scene.add(grp);
+        devices3D.sockets.push({ ledMat });
+        interactives.push({ mesh: hit, kind: 'socket', index: i, tooltip: () => 'Out ' + (i + 1) });
+        interactives.push({ mesh: led, kind: 'socket', index: i, tooltip: () => 'Out ' + (i + 1) });
+      });
+    }
+
+    // Door sensor — realistic door with frame, panel, handle & sensor LED
+    {
+      const p = pctPoint(18, 99);
+      const grp = new THREE.Group();
+
+      const DOOR_W = 5.5, DOOR_H = WALL_H - 0.5, FRAME_T = 0.6, FRAME_D = 1.2;
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x3a3028, roughness: 0.75, metalness: 0.15, emissive: 0x25a55a, emissiveIntensity: 0.2 });
+
+      // Frame — left upright
+      const frameL = new THREE.Mesh(new THREE.BoxGeometry(FRAME_T, DOOR_H, FRAME_D), frameMat);
+      frameL.position.set(-DOOR_W / 2, DOOR_H / 2, 0); frameL.castShadow = true; grp.add(frameL);
+      // Frame — right upright
+      const frameR = new THREE.Mesh(new THREE.BoxGeometry(FRAME_T, DOOR_H, FRAME_D), frameMat);
+      frameR.position.set(DOOR_W / 2, DOOR_H / 2, 0); frameR.castShadow = true; grp.add(frameR);
+      // Frame — top lintel
+      const frameTop = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + FRAME_T, FRAME_T, FRAME_D), frameMat);
+      frameTop.position.set(0, DOOR_H + FRAME_T / 2, 0); frameTop.castShadow = true; grp.add(frameTop);
+
+      // Door panel — pivots around left edge (hinge side)
+      const PANEL_W = DOOR_W - FRAME_T * 0.8, PANEL_H = DOOR_H - 0.3, PANEL_T = 0.35;
+      const panelMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.7, metalness: 0.1 });
+      const doorPivot = new THREE.Group();
+      doorPivot.position.set(-DOOR_W / 2 + FRAME_T / 2, 0, 0); // hinge at left frame edge
+
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(PANEL_W, PANEL_H, PANEL_T), panelMat);
+      panel.position.set(PANEL_W / 2, PANEL_H / 2 + 0.15, 0);
+      panel.castShadow = true; panel.receiveShadow = true;
+      doorPivot.add(panel);
+
+      // Panel detail — two inset rectangles
+      const insetMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 0.8, metalness: 0.05 });
+      const insetW = PANEL_W * 0.6, insetH = PANEL_H * 0.32;
+      const insetUp = new THREE.Mesh(new THREE.BoxGeometry(insetW, insetH, 0.06), insetMat);
+      insetUp.position.set(PANEL_W / 2, PANEL_H * 0.68, PANEL_T / 2 + 0.03); doorPivot.add(insetUp);
+      const insetDown = new THREE.Mesh(new THREE.BoxGeometry(insetW, insetH, 0.06), insetMat);
+      insetDown.position.set(PANEL_W / 2, PANEL_H * 0.26, PANEL_T / 2 + 0.03); doorPivot.add(insetDown);
+
+      // Handle — metallic knob on the right side of the panel
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0xccbb88, roughness: 0.25, metalness: 0.9 });
+      const handleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.3, 12), handleMat);
+      handleBase.rotation.x = Math.PI / 2;
+      handleBase.position.set(PANEL_W - 0.7, PANEL_H * 0.47, PANEL_T / 2 + 0.15);
+      doorPivot.add(handleBase);
+      const handleKnob = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), handleMat);
+      handleKnob.position.set(PANEL_W - 0.7, PANEL_H * 0.47, PANEL_T / 2 + 0.4);
+      doorPivot.add(handleKnob);
+
+      // Hinges
+      const hingeMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.8 });
+      [PANEL_H * 0.2, PANEL_H * 0.8].forEach(hy => {
+        const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8), hingeMat);
+        hinge.position.set(0.1, hy, 0);
+        doorPivot.add(hinge);
+      });
+
+      grp.add(doorPivot);
+
+      // Sensor LED on the frame top-right
+      const sensorLedMat = new THREE.MeshStandardMaterial({ color: 0x25a55a, emissive: 0x25a55a, emissiveIntensity: 0.6 });
+      const sensorLed = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), sensorLedMat);
+      sensorLed.position.set(DOOR_W / 2 - 0.1, DOOR_H - 0.5, FRAME_D / 2 + 0.1);
+      grp.add(sensorLed);
+
+      // Hit area for interaction
+      const hit = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + 2, DOOR_H + 2, 3), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.set(0, DOOR_H / 2, 0); grp.add(hit);
+
+      grp.position.set(p.x, 0, p.z); grp.rotation.y = Math.PI / 2; scene.add(grp);
+      devices3D.door = { mesh: sensorLed, pivot: doorPivot, frameMat: frameMat, _targetAngle: 0, _currentAngle: 0 };
+      interactives.push({ mesh: hit, kind: 'door', tooltip: () => 'Porta d\'ingresso' });
+      interactives.push({ mesh: panel, kind: 'door', tooltip: () => 'Porta d\'ingresso' });
+    }
+
+    // Motion sensor
+    {
+      const p = pctPoint(10, 75);
+      const grp = new THREE.Group();
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 12),
+        new THREE.MeshStandardMaterial({ color: 0x3d3d5c, emissive: 0x3d3d5c, emissiveIntensity: 0.3 }));
+      orb.position.y = WALL_H - 1; orb.castShadow = true; grp.add(orb);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.2, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2a2a40 }));
+      arm.position.y = WALL_H - 0.4; grp.add(arm);
+      grp.position.set(p.x, 0, p.z); scene.add(grp);
+      devices3D.motion = { mesh: orb };
+    }
+
+    // Camera Tapo C202
+    {
+      const p = pctPoint(5, 95);
+      const grp = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.4, metalness: 0.7 });
+      const lensMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.1, metalness: 0.5, emissive: 0x0044ff, emissiveIntensity: 0.4 });
+      // Corpo camera
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2, 16), bodyMat);
+      body.rotation.z = Math.PI / 2; body.position.y = WALL_H - 1.5; body.castShadow = true; grp.add(body);
+      // Lente
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16), lensMat);
+      lens.rotation.z = Math.PI / 2; lens.position.set(1.1, WALL_H - 1.5, 0); grp.add(lens);
+      // Staffa
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), bodyMat);
+      bracket.position.set(0, WALL_H - 0.6, 0); grp.add(bracket);
+      // Hit area
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), new THREE.MeshBasicMaterial({ visible: false }));
+      hit.position.y = WALL_H - 1.5; grp.add(hit);
+      grp.position.set(p.x, 0, p.z);
+      grp.rotation.y = Math.PI;
+      scene.add(grp);
+      devices3D.tapoCamera = { lensMat };
+      interactives.push({ mesh: hit, kind: 'tapoCamera', tooltip: () => 'Tapo C202 — clicca per stream' });
+    }
+
+    // Sprite Temp/Hum
+    const rcv = document.createElement('canvas'); rcv.width = 512; rcv.height = 280;
+    const rctx = rcv.getContext('2d');
+    const rtex = new THREE.CanvasTexture(rcv); rtex.colorSpace = THREE.SRGBColorSpace;
+    const rplane = new THREE.Mesh(
+      new THREE.PlaneGeometry(18, 10),
+      new THREE.MeshBasicMaterial({ map: rtex, transparent: true, depthWrite: false })
+    );
+    rplane.rotation.x = -Math.PI / 2;
+    const rPos = pctPoint(34, 90); rplane.position.set(rPos.x, 0.12, rPos.z);
+    scene.add(rplane);
+    function updateReadoutSprite(temp, hum, lux) {
+      rctx.clearRect(0, 0, rcv.width, rcv.height);
+      rctx.shadowColor = 'rgba(0,0,0,0.7)'; rctx.shadowBlur = 12;
+      rctx.textBaseline = 'top';
+      // Luminosità con icona sole
+      rctx.fillStyle = '#ffd166'; rctx.font = '700 56px Inter';
+      rctx.textAlign = 'right';
+      rctx.fillText((lux !== undefined ? lux : '—') + ' lux', rcv.width - 12, 4);
+      rctx.font = '700 50px serif';
+      rctx.fillText('☀️', rcv.width - 12 - rctx.measureText((lux !== undefined ? lux : '—') + ' lux').width - 60, 4);
+      // Umidità con icona goccia
+      rctx.fillStyle = '#64dfdf'; rctx.font = '700 68px Inter';
+      rctx.textAlign = 'right';
+      rctx.fillText(hum + '%', rcv.width - 12, 72);
+      rctx.font = '700 60px serif';
+      rctx.textAlign = 'right';
+      rctx.fillText('💧', rcv.width - 12 - rctx.measureText(hum + '%').width - 80, 72);
+      // Temperatura con termometro monocromo a sinistra
+      rctx.fillStyle = '#adc6ff'; rctx.font = '800 96px Inter';
+      rctx.textAlign = 'right';
+      rctx.fillText(temp + '°', rcv.width - 12, 160);
+      // Termometro disegnato a canvas (monocromo, stesso colore testo)
+      const tempTextW = rctx.measureText(temp + '°').width;
+      const tx = rcv.width - 12 - tempTextW - 60, ty = 160;
+      const tw = 14, th = 70, tr = 14; // larghezza tubo, altezza, raggio bulbo
+      rctx.fillStyle = '#adc6ff'; rctx.strokeStyle = '#adc6ff'; rctx.lineWidth = 2;
+      // Tubo
+      rctx.beginPath();
+      rctx.roundRect(tx + 7, ty + 8, tw, th - tr - 8, tw / 2);
+      rctx.fill();
+      // Bulbo
+      rctx.beginPath();
+      rctx.arc(tx + 7 + tw / 2, ty + th, tr, 0, Math.PI * 2);
+      rctx.fill();
+      // Finestrella interna (sfondo scuro per contrasto)
+      rctx.fillStyle = 'rgba(10,12,30,0.7)';
+      rctx.beginPath();
+      rctx.roundRect(tx + 10, ty + 10, tw - 6, th - tr - 14, (tw - 6) / 2);
+      rctx.fill();
+      rtex.needsUpdate = true;
+    }
+    updateReadoutSprite('—', '—', '—');
+
+    // Raycaster
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const tooltipEl = document.getElementById('sceneTooltip');
+
+    function pickInteractive(cx, cy) {
+      const r = canvas.getBoundingClientRect();
+      pointer.x = ((cx - r.left) / r.width) * 2 - 1;
+      pointer.y = -((cy - r.top) / r.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const meshes = interactives.map(i => i.mesh);
+      const hits = raycaster.intersectObjects(meshes, false);
+      if (!hits.length) return null;
+      return interactives.find(i => i.mesh === hits[0].object) || null;
+    }
+    function showTooltip(text, cx, cy) {
+      const r = wrap.getBoundingClientRect();
+      tooltipEl.textContent = text;
+      tooltipEl.style.left = (cx - r.left) + 'px';
+      tooltipEl.style.top = (cy - r.top) + 'px';
+      tooltipEl.classList.add('show');
+    }
+    function hideTooltip() { tooltipEl.classList.remove('show'); }
+
+    let downX = 0, downY = 0, dragging = false, lampPress = null;
+    canvas.addEventListener('pointerdown', e => {
+      downX = e.clientX; downY = e.clientY; dragging = false;
+      canvas.classList.add('dragging');
+      const hit = pickInteractive(e.clientX, e.clientY);
+      if (hit && hit.kind === 'lampada') {
+        lampPress = setTimeout(() => {
+          lampPress = null; dragging = true; hideTooltip();
+          window.HA && window.HA.openLampModal && window.HA.openLampModal();
+        }, 500);
+      }
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 4) dragging = true;
+      if (e.pointerType !== 'touch') {
+        const hit = pickInteractive(e.clientX, e.clientY);
+        if (hit) { canvas.style.cursor = 'pointer'; showTooltip(hit.tooltip(), e.clientX, e.clientY); }
+        else { canvas.style.cursor = 'grab'; hideTooltip(); }
+      }
+    });
+    canvas.addEventListener('pointerup', e => {
+      canvas.classList.remove('dragging');
+      if (lampPress) { clearTimeout(lampPress); lampPress = null; }
+      if (dragging) return;
+      const hit = pickInteractive(e.clientX, e.clientY);
+      if (!hit) return;
+      switch (hit.kind) {
+        case 'tv': window.HA && window.HA.toggleTV(); break;
+        case 'lampada': window.HA && window.HA.toggleEntity('light.lampada'); break;
+        case 'faretti': window.HA && window.HA.toggleEntity('switch.shelly1_vela'); break;
+        case 'socket': window.HA && window.HA.toggleEntity('switch.shellypstripg4_e8f60a617f38_switch_' + hit.index); break;
+        case 'boiler': window.HA && window.HA.toggleEntity('switch.ariston_power'); break;
+        case 'washer': window.HA && window.HA.toggleEntity('switch.shellyplus1pm_4855199d6bb4_switch_0'); break;
+        case 'fridge': window.HA && window.HA.toggleEntity('switch.shellyplus1pm_cc7b5c826c80'); break;
+        case 'xiaomi': window.HA && window.HA.toggleEntity('light.yeelight_lamp15_0xeea0715'); break;
+        case 'door': window.HA && window.HA.openDoorModal(); break;
+        case 'tapoCamera': openCameraModal(); break;
+      }
+    });
+    canvas.addEventListener('pointerleave', () => { hideTooltip(); canvas.classList.remove('dragging'); });
+    canvas.addEventListener('pointercancel', () => { if (lampPress) { clearTimeout(lampPress); lampPress = null; } });
+
+    function animateCamera(targetPos, targetLook, ms = 700) {
+      const start = camera.position.clone(), startLook = controls.target.clone();
+      const t0 = performance.now();
+      function step(now) {
+        const t = Math.min(1, (now - t0) / ms);
+        const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        camera.position.lerpVectors(start, targetPos, e);
+        controls.target.lerpVectors(startLook, targetLook, e);
+        controls.update();
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    document.getElementById('btnViewTop').addEventListener('click',
+      () => animateCamera(new THREE.Vector3(W / 2, 200, D / 2 + 0.01), ROOM_CENTER));
+    document.getElementById('btnViewIso').addEventListener('click',
+      () => animateCamera(new THREE.Vector3(W / 2 + 95, 105, D / 2 + 100), ROOM_CENTER));
+    document.getElementById('btnViewReset').addEventListener('click',
+      () => animateCamera(DEFAULT_POS, ROOM_CENTER));
+    canvas.addEventListener('dblclick', () => animateCamera(DEFAULT_POS, ROOM_CENTER));
+    document.getElementById('btnAutoRotate').addEventListener('click', () => {
+      controls._autoRotating = !controls._autoRotating;
+      const btn = document.getElementById('btnAutoRotate');
+      btn.style.background = controls._autoRotating ? 'rgba(75,142,255,0.3)' : '';
+      btn.style.color = controls._autoRotating ? 'var(--primary)' : '';
+      if (controls._autoRotating) controls.enablePan = false;
+      else controls.enablePan = true;
+    });
+
+    function resize() {
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(wrap); resize();
+
+    let frame = 0;
+    function animate() {
+      frame++;
+      if (devices3D.motion && devices3D.motion._active) {
+        devices3D.motion.mesh.material.emissiveIntensity = 0.6 + 0.4 * Math.sin(frame * 0.18);
+        devices3D.motion.mesh.scale.setScalar(1 + 0.06 * Math.sin(frame * 0.18));
+      }
+      // TV screen animation — subtle color shifting & glow pulse
+      if (devices3D.tv && devices3D.tv._tvOn) {
+        const t = frame * 0.04;
+        const r = 0.12 + 0.10 * Math.sin(t * 1.7);
+        const g = 0.28 + 0.15 * Math.sin(t * 2.3 + 1.2);
+        const b = 0.55 + 0.20 * Math.sin(t * 1.1 + 2.5);
+        devices3D.tv.screenMat.emissive.setRGB(r, g, b);
+        devices3D.tv.screenMat.emissiveIntensity = 1.5 + 1.0 * Math.sin(t * 3.1);
+        devices3D.tv.glowMat.opacity = 0.12 + 0.06 * Math.sin(t * 2.0 + 0.8);
+        if (devices3D.tv.ambient) devices3D.tv.ambient.intensity = 1.8 + 0.4 * Math.sin(t * 2.5);
+        devices3D.tv.spot.intensity = 8 + 6 * Math.sin(t * 1.5);
+        devices3D.tv.spot.color.setRGB(r * 2, g * 1.5, b * 1.2);
+      }
+      if (devices3D.washer && devices3D.washer._spinning) {
+        devices3D.washer.doorMat.emissiveIntensity = 0.5 + 0.3 * Math.sin(frame * 0.25);
+      }
+      // Animate door pivot smoothly
+      if (devices3D.door && devices3D.door.pivot) {
+        const diff = devices3D.door._targetAngle - devices3D.door._currentAngle;
+        if (Math.abs(diff) > 0.005) {
+          devices3D.door._currentAngle += diff * 0.06;
+          devices3D.door.pivot.rotation.y = devices3D.door._currentAngle;
+        }
+      }
+      if (controls._autoRotating) {
+        controls.target.copy(ROOM_CENTER);
+        const dx = camera.position.x - ROOM_CENTER.x;
+        const dz = camera.position.z - ROOM_CENTER.z;
+        const r = Math.sqrt(dx * dx + dz * dz);
+        const angle = Math.atan2(dx, dz) + 0.0003;
+        camera.position.x = ROOM_CENTER.x + Math.sin(angle) * r;
+        camera.position.z = ROOM_CENTER.z + Math.cos(angle) * r;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+    document.getElementById('sceneLoading').classList.add('hidden');
+
+    function kelvinToRGB(k) {
+      k = Math.max(1000, Math.min(40000, k)) / 100;
+      let r, g, b;
+      if (k <= 66) { r = 255; g = 99.4708 * Math.log(k) - 161.1196; }
+      else { r = 329.6987 * Math.pow(k - 60, -0.1332); g = 288.1222 * Math.pow(k - 60, -0.0755); }
+      if (k >= 66) b = 255;
+      else if (k <= 19) b = 0;
+      else b = 138.5177 * Math.log(k - 10) - 305.0448;
+      return { r: Math.max(0, Math.min(255, r)) / 255, g: Math.max(0, Math.min(255, g)) / 255, b: Math.max(0, Math.min(255, b)) / 255 };
+    }
+
+    window.update3D = function (states) {
+      const tvSt = states['media_player.sony_2']?.state;
+      // Many HA media players use 'playing', 'paused', 'idle' when on
+      const tvOn = tvSt && tvSt !== 'off' && tvSt !== 'unavailable';
+      if (devices3D.tv) {
+        devices3D.tv._tvOn = tvOn;
+        if (!tvOn) {
+          devices3D.tv.screenMat.emissive.setHex(0x000000);
+          devices3D.tv.screenMat.emissiveIntensity = 0;
+          devices3D.tv.glowMat.opacity = 0;
+          devices3D.tv.spot.intensity = 0;
+          if (devices3D.tv.ambient) devices3D.tv.ambient.intensity = 0;
+        } else {
+          devices3D.tv.screenMat.emissive.setHex(0x3a6abf);
+          devices3D.tv.screenMat.emissiveIntensity = 1.5;
+          devices3D.tv.glowMat.opacity = 0.12;
+          devices3D.tv.spot.intensity = 2.5;
+          if (devices3D.tv.ambient) devices3D.tv.ambient.intensity = 1.8;
+        }
+      }
+      const lampSt = states['light.lampada']?.state;
+      const bright = states['light.lampada']?.attributes?.brightness || 0;
+      const tempK = states['light.lampada']?.attributes?.color_temp_kelvin || 3200;
+      if (devices3D.lampada) {
+        const on = lampSt === 'on', f = bright / 255, c = kelvinToRGB(tempK);
+        devices3D.lampada.bulbMat.color.setRGB(on ? c.r : 0.2, on ? c.g : 0.1, on ? c.b : 0.05);
+        devices3D.lampada.shadeMat.emissive.setRGB(c.r, c.g, c.b);
+        devices3D.lampada.shadeMat.emissiveIntensity = on ? (0.4 + f * 0.8) : 0;
+        devices3D.lampada.light.color.setRGB(c.r, c.g, c.b);
+        devices3D.lampada.light.intensity = on ? 30 + f * 60 : 0;
+      }
+      const fOn = states['switch.shelly1_vela']?.state === 'on';
+      if (devices3D.faretti) devices3D.faretti.forEach(f => {
+        f.lensMat.emissiveIntensity = fOn ? 1.0 : 0;
+        f.ringMat.emissiveIntensity = fOn ? 0.8 : 0;
+        f.light.intensity = fOn ? 55 : 0;
+      });
+
+      if (devices3D.xiaomiLight) {
+        const xOn = states['light.yeelight_lamp15_0xeea0715']?.state === 'on';
+        devices3D.xiaomiLight.bulbMat.color.setHex(xOn ? 0xffffff : 0x222222);
+        devices3D.xiaomiLight.light.intensity = xOn ? 25 : 0;
+      }
+      const boilerP = parseFloat(states['sensor.shellyplus1pm_4855199a166c_switch_0_power']?.state) || 0;
+      if (devices3D.boiler) {
+        devices3D.boiler.ledMat.emissiveIntensity = boilerP > 100 ? 0.9 : 0;
+      }
+      // Frigo — LED verde standby, ciano pulsante se compressore attivo (>5W)
+      if (devices3D.fridge) {
+        const fridgeP3 = parseFloat(states['sensor.shellyplus1pm_cc7b5c826c80_potenza']?.state) || 0;
+        const fridgeOn = states['switch.shellyplus1pm_cc7b5c826c80']?.state === 'on';
+        if (!fridgeOn) {
+          devices3D.fridge.ledMat.color.setHex(0x333333);
+          devices3D.fridge.ledMat.emissive.setHex(0x000000);
+          devices3D.fridge.ledMat.emissiveIntensity = 0;
+          devices3D.fridge.glow.intensity = 0;
+        } else if (fridgeP3 > 5) {
+          // Compressore attivo — ciano pulsante
+          const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
+          devices3D.fridge.ledMat.color.setHex(0x00ccff);
+          devices3D.fridge.ledMat.emissive.setHex(0x00ccff);
+          devices3D.fridge.ledMat.emissiveIntensity = 0.6 + 0.4 * pulse;
+          devices3D.fridge.glow.intensity = 1.5 * pulse;
+          devices3D.fridge.glow.color.setHex(0x00aaff);
+        } else {
+          // Standby — verde fisso
+          devices3D.fridge.ledMat.color.setHex(0x00cc44);
+          devices3D.fridge.ledMat.emissive.setHex(0x00cc44);
+          devices3D.fridge.ledMat.emissiveIntensity = 0.5;
+          devices3D.fridge.glow.intensity = 0;
+        }
+      }
+      // Sprite info scaldabagno
+      if (devices3D.boiler && devices3D.boiler.updateSprite) {
+        const bTemp = states['sensor.ariston_proc_req_temp']?.state;
+        const bShow = states['sensor.ariston_average_showers']?.state;
+        devices3D.boiler.updateSprite(bTemp || '—', bShow || '—');
+      }
+      const washSt = states['switch.shellyplus1pm_4855199d6bb4_switch_0']?.state;
+      const washP = parseFloat(states['sensor.shellyplus1pm_4855199d6bb4_switch_0_power']?.state) || 0;
+      if (devices3D.washer) {
+        if (washSt !== 'on') {
+          devices3D.washer._spinning = false;
+          devices3D.washer.doorMat.emissive.setHex(0x000000);
+          devices3D.washer.doorMat.emissiveIntensity = 0;
+        } else if (washP > 10) {
+          devices3D.washer._spinning = true;
+          devices3D.washer.doorMat.emissive.setHex(0x4b8eff);
+        } else {
+          devices3D.washer._spinning = false;
+          devices3D.washer.doorMat.emissive.setHex(0x64dfdf);
+          devices3D.washer.doorMat.emissiveIntensity = 0.5;
+        }
+      }
+      if (devices3D.sockets) devices3D.sockets.forEach((s, i) => {
+        const sw = states['switch.shellypstripg4_e8f60a617f38_switch_' + i]?.state;
+        const p = parseFloat(states['sensor.shellypstripg4_e8f60a617f38_switch_' + i + '_potenza']?.state) || 0;
+        let col, intensity;
+        if (sw !== 'on') { col = 0x3d3d5c; intensity = 0.25; }
+        else if (p < 50) { col = 0x66dd8b; intensity = 1.3; }
+        else if (p < 200) { col = 0xffb874; intensity = 1.3; }
+        else { col = 0xff6b6b; intensity = 1.5; }
+        s.ledMat.emissive.setHex(col);
+        s.ledMat.emissiveIntensity = intensity;
+      });
+      if (devices3D.door) {
+        const open = states['binary_sensor.shelly_blu_door_window_8cd3_window']?.state === 'on';
+        // Sensor LED color
+        devices3D.door.mesh.material.color.setHex(open ? 0xff6b6b : 0x25a55a);
+        devices3D.door.mesh.material.emissive.setHex(open ? 0xff6b6b : 0x25a55a);
+        devices3D.door.mesh.material.emissiveIntensity = open ? 1.0 : 0.5;
+        // Frame glow
+        if (devices3D.door.frameMat) {
+          devices3D.door.frameMat.emissive.setHex(open ? 0xff3b3b : 0x25a55a);
+          devices3D.door.frameMat.emissiveIntensity = open ? 0.3 : 0.15;
+        }
+        // Door panel animation target angle (positive to open inwards)
+        devices3D.door._targetAngle = open ? Math.PI * 0.45 : 0;
+      }
+      if (devices3D.motion) {
+        const active = states['binary_sensor.hub3_063d']?.state === 'on';
+        devices3D.motion._active = active;
+        if (!active) {
+          devices3D.motion.mesh.material.emissive.setHex(0x3d3d5c);
+          devices3D.motion.mesh.material.emissiveIntensity = 0.3;
+          devices3D.motion.mesh.scale.setScalar(1);
+        } else {
+          devices3D.motion.mesh.material.emissive.setHex(0x64dfdf);
+        }
+      }
+      const t = states['sensor.hub3_063d_temperatura']?.state;
+      const h = states['sensor.hub3_063d_umidita']?.state;
+      const l = states['sensor.hub3_063d_illuminamento']?.state;
+      updateReadoutSprite(
+        t && t !== 'unavailable' ? t : '—',
+        h && h !== 'unavailable' ? h : '—',
+        l && l !== 'unavailable' ? l : '—'
+      );
+    };
+    if (window.HA && window.HA.states) window.update3D(window.HA.states);
+  </script>
+
+  </div><!-- /screen1 -->
+
+  <!-- SCREEN 2 -->
+  <div id="screen2" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;background:var(--bg);">
+    <div class="header">
+      <div>
+        <h1>Automazioni</h1>
+        <div class="date" id="dateDisplay2"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-dim);">
+        <span class="material-symbols-outlined" style="font-size:1rem;">swipe_right</span> Torna alla planimetria
+      </div>
+    </div>
+    <div style="padding:80px 24px 24px;height:100%;box-sizing:border-box;overflow-y:auto;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;">
+
+        <!-- Placeholder: Node-RED flows status -->
+        <div class="card">
+          <div class="card-title">Node-RED</div>
+          <div style="color:var(--text-dim);font-size:0.85rem;margin-bottom:16px;">Stato flussi attivi</div>
+          <div class="device-row">
+            <div class="device-info">
+              <div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">account_tree</span></div>
+              <div><div class="device-name">Monitor Casa Igor</div><div class="device-state">Attivo</div></div>
+            </div>
+            <span style="font-size:0.75rem;color:var(--green);font-weight:700;">● LIVE</span>
+          </div>
+          <div class="device-row" style="margin-top:8px;">
+            <div class="device-info">
+              <div class="device-icon" style="color:var(--cyan)"><span class="material-symbols-outlined">sensors</span></div>
+              <div><div class="device-name">MQTT Broker</div><div class="device-state" id="s2MqttState">192.168.1.195:1883</div></div>
+            </div>
+            <span style="font-size:0.75rem;color:var(--cyan);font-weight:700;">● OK</span>
+          </div>
+          <a href="http://192.168.1.195:1880" target="_blank" style="display:block;margin-top:16px;">
+            <button class="action-btn" style="width:100%;flex-direction:row;gap:8px;">
+              <span class="material-symbols-outlined">open_in_new</span>
+              <span style="font-size:0.85rem;font-weight:700;">Apri Node-RED</span>
+            </button>
+          </a>
+        </div>
+
+        <!-- Placeholder: Quick automations -->
+        <div class="card">
+          <div class="card-title">Quick Automazioni</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="action-btn" id="s2BtnBuonanotte" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined filled" style="color:var(--primary)">bedtime</span>
+              <span style="font-size:0.85rem;font-weight:700;">Buonanotte</span>
+            </button>
+            <button class="action-btn" id="s2BtnAccendi" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined filled" style="color:var(--green)">desktop_tower_monitor</span>
+              <span style="font-size:0.85rem;font-weight:700;">Accendi Postazione</span>
+            </button>
+            <button class="action-btn" id="s2BtnSpegni" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined" style="color:var(--red)">power_off</span>
+              <span style="font-size:0.85rem;font-weight:700;">Spegni Postazione</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Placeholder: Shelly devices -->
+        <div class="card">
+          <div class="card-title">Dispositivi Shelly</div>
+          <div style="color:var(--text-dim);font-size:0.75rem;margin-bottom:12px;">MQTT → 192.168.1.195</div>
+          <div id="s2ShellyList" style="display:flex;flex-direction:column;gap:8px;">
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Lavatrice</div><div class="device-state" id="s2Lavatrice">—</div></div></div></div>
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--orange)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Scaldabagno</div><div class="device-state" id="s2Scaldabagno">—</div></div></div></div>
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--cyan)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Frigorifero</div><div class="device-state" id="s2Frigo">—</div></div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /screen2 -->
+
+  <!-- SCREEN 3 — CALENDARIO -->
+  <div id="screen3" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;">
+
+    <!-- Selettore mese — parte del flex, non sovrapposto -->
+    <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:58px;background:rgba(8,8,26,0.95);border-bottom:1px solid rgba(173,198,255,0.1);">
+      <button id="calPrev" style="background:rgba(255,255,255,0.07);border:none;color:var(--text);cursor:pointer;font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;">‹</button>
+      <span id="calTitle" style="font-size:1.1rem;font-weight:700;color:var(--text);">—</span>
+      <button id="calNext" style="background:rgba(255,255,255,0.07);border:none;color:var(--text);cursor:pointer;font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;">›</button>
+    </div>
+
+    <!-- Intestazione settimana -->
+    <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 2px;">
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">LUN</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">MAR</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">MER</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">GIO</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">VEN</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--primary);">SAB</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--red);">DOM</div>
+    </div>
+
+    <!-- Griglia giorni — occupa tutto lo spazio restante -->
+    <div id="calGrid" style="flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:4px;padding:4px 8px 8px;min-height:0;"></div>
+
+  </div><!-- /screen3 -->
+
+  </div><!-- /carousel -->
+
+  <!-- MODALE GIORNO — fuori dal carousel per position:fixed corretto -->
+  <div id="dayModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,20,0.75);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="lamp-modal" style="max-width:480px;width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
+      <div class="lamp-modal-title" id="dayModalTitle">—</div>
+      <div id="dayTodoList" style="flex:1;overflow-y:auto;margin:12px 0;min-height:60px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input id="dayTodoInput" type="text" placeholder="Aggiungi nota..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:var(--text);font-family:inherit;font-size:0.9rem;outline:none;">
+        <button id="dayTodoAdd" style="padding:10px 16px;background:var(--primary);border:none;border-radius:12px;color:#fff;cursor:pointer;font-weight:700;">+</button>
+      </div>
+      <button class="lamp-modal-close" id="dayModalClose">— CHIUDI —</button>
+    </div>
+  </div>
+
+  <!-- MODALI — fuori dal carousel per evitare stacking context del transform -->
+  <div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,20,0.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div class="lamp-modal" style="max-width:560px;width:95%;position:relative;top:auto;left:auto;transform:none;">
+      <div class="lamp-modal-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📷 Tapo C202</span>
+        <span style="font-size:0.7rem;color:var(--text-dim)" id="cameraMotionBadge"></span>
+      </div>
+      <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;margin:12px 0;">
+        <img id="cameraStream" style="width:100%;height:100%;object-fit:cover;display:none;" />
+        <div id="cameraStreamError" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.85rem;">Caricamento...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="ac-fan-btn" id="btnCamPrivacy">🔒 Privacy</button>
+        <button class="ac-fan-btn" id="btnCamLed">💡 LED</button>
+        <button class="ac-fan-btn" id="btnCamAlarm">🔔 Allarme</button>
+        <button class="ac-fan-btn" id="btnCamReboot">↺ Riavvia</button>
+      </div>
+      <button class="lamp-modal-close" id="modalCloseCamera">— CHIUDI —</button>
+    </div>
+  </div>
+
+  <div class="lamp-modal-overlay" id="lampModal">
+    <div class="lamp-modal">
+      <div class="lamp-modal-title">Controllo Luce</div>
+      <div class="lamp-modal-name">Tapo L520</div>
+      <div class="lamp-modal-toggle-row"><span class="lamp-modal-power" id="modalLampState">—</span><button
+          class="toggle" id="modalToggleLampada"></button></div>
+      <div class="lamp-modal-row"><span class="lamp-modal-label">Luminosità</span><span class="lamp-modal-value"
+          id="modalBrightVal">—</span></div>
+      <input type="range" class="lamp-modal-slider bright" id="modalSliderBright" min="1" max="255" value="128" />
+      <div style="margin-top:24px;"><button class="lamp-modal-close" id="modalCloseLamp">— CHIUDI —</button></div>
+    </div>
+  </div>
+
+  <div class="lamp-modal-overlay" id="doorModal">
+    <div class="lamp-modal">
+      <div class="lamp-modal-title">Log Accessi</div>
+      <div class="lamp-modal-name">Porta / Finestra</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div id="doorCurrentDot" class="door-log-dot close"></div><span
+          style="font-size:0.85rem;font-weight:600;color:var(--text)" id="doorCurrentState">—</span>
+      </div>
+      <div class="door-log-list" id="doorLogList">
+        <div style="color:var(--text-dim);font-size:0.75rem;text-align:center;padding:20px;">Caricamento...</div>
+      </div>
+      <div style="margin-top:18px;"><button class="lamp-modal-close" id="modalCloseDoor">— CHIUDI —</button></div>
+    </div>
+  </div>
+
+  <div class="conn-status disconnected" id="connStatus"><span class="material-symbols-outlined"
+      style="font-size:14px;vertical-align:middle;">wifi_off</span> Disconnesso</div>
+
+  <!-- DOTS INDICATORI -->
+  <div id="carouselDots" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9000;">
+    <div id="dot0" style="width:10px;height:10px;border-radius:50%;background:var(--primary);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(0)"></div>
+    <div id="dot1" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(1)"></div>
+    <div id="dot2" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(2)"></div>
+  </div>
+
+  <script>
+  // === CAROUSEL SWIPE ===
+  (function() {
+    const carousel = document.getElementById('carousel');
+    let currentScreen = 0;
+    let startX = 0, startY = 0, isDragging = false, moved = false;
+
+    function goTo(idx) {
+      currentScreen = idx;
+      carousel.style.transform = 'translateX(' + (-idx * 100) + 'vw)';
+      [0,1,2].forEach(i => {
+        document.getElementById('dot'+i).style.background = idx === i ? 'var(--primary)' : 'rgba(255,255,255,0.25)';
+      });
+      // Nascondi header principale su slide 3 (coprirebbe il selettore mese)
+      const mainHeaders = document.querySelectorAll('#screen1 .header, #screen2 .header');
+      const globalHeader = document.querySelector('body > .header') || document.querySelector('#screen1 ~ .header');
+      // Header di screen1 e screen2 sono dentro i rispettivi screen, ma l'header globale è fixed
+      document.querySelectorAll('.header').forEach(h => {
+        if (!h.closest('#screen3')) h.style.visibility = idx === 2 ? 'hidden' : '';
+      });
+    }
+    window._carouselGoTo = goTo;
+
+    const canvas3d = document.getElementById('sceneWrap');
+    const isOnCanvas = e => canvas3d && canvas3d.contains(e.target);
+
+    // Touch
+    carousel.addEventListener('touchstart', e => {
+      if (isOnCanvas(e)) { startX = null; return; }
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY; moved = false;
+    }, { passive: true });
+    carousel.addEventListener('touchmove', e => { if (startX !== null) moved = true; }, { passive: true });
+    carousel.addEventListener('touchend', e => {
+      if (startX === null || !moved) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+        if (dx < 0 && currentScreen === 0) goTo(1);
+        else if (dx > 0 && currentScreen === 1) goTo(0);
+      }
+    });
+
+    // Mouse drag (desktop)
+    carousel.addEventListener('mousedown', e => {
+      if (isOnCanvas(e)) { isDragging = false; return; }
+      startX = e.clientX; startY = e.clientY; isDragging = true; moved = false;
+    });
+    carousel.addEventListener('mousemove', e => { if (isDragging && Math.abs(e.clientX - startX) > 5) moved = true; });
+    carousel.addEventListener('mouseup', e => {
+      if (!isDragging) return;
+      isDragging = false;
+      if (!moved) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 60) {
+        if (dx < 0 && currentScreen === 0) goTo(1);
+        else if (dx > 0 && currentScreen === 1) goTo(0);
+      }
+    });
+
+    // Aggiorna screen2 con dati HA
+    function updateScreen2() {
+      if (!window.HA) return;
+      const st = window.HA.states || {};
+      const washerSw = st['switch.shellyplus1pm_4855199d6bb4_switch_0']?.state;
+      const boilerSw = st['switch.shellyplus1pm_4855199a166c_switch_0']?.state;
+      const fridgeSw = st['switch.shellyplus1pm_cc7b5c826c80']?.state;
+      const el = id => document.getElementById(id);
+      if (el('s2Lavatrice')) el('s2Lavatrice').textContent = washerSw === 'on' ? 'Accesa' : 'Spenta';
+      if (el('s2Scaldabagno')) el('s2Scaldabagno').textContent = boilerSw === 'on' ? 'Acceso' : 'Spento';
+      if (el('s2Frigo')) el('s2Frigo').textContent = fridgeSw === 'on' ? 'Acceso' : 'Spento';
+    }
+    setInterval(updateScreen2, 3000);
+
+    // === CALENDARIO SCREEN 3 ===
+    (function() {
+      const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+      const TODO_ENTITY = 'todo.lista_della_spesa';
+      let calYear, calMonth, selectedDay, allItems = [];
+
+      function padZ(n) { return n < 10 ? '0'+n : ''+n; }
+      function dayKey(y, m, d) { return y + '-' + padZ(m+1) + '-' + padZ(d); }
+
+      function renderCal(y, m) {
+        calYear = y; calMonth = m;
+        document.getElementById('calTitle').textContent = MONTHS[m] + ' ' + y;
+        const grid = document.getElementById('calGrid');
+        while (grid.firstChild) grid.removeChild(grid.firstChild);
+        const today = new Date();
+        const firstDay = new Date(y, m, 1).getDay();
+        const offset = firstDay === 0 ? 6 : firstDay - 1;
+        const daysInMonth = new Date(y, m+1, 0).getDate();
+        for (let i = 0; i < offset; i++) grid.appendChild(document.createElement('div'));
+        for (let d = 1; d <= daysInMonth; d++) {
+          const key = dayKey(y, m, d);
+          const hasItems = allItems.some(it => (it.summary||'').startsWith(key));
+          const isToday = y === today.getFullYear() && m === today.getMonth() && d === today.getDate();
+          const dow = new Date(y, m, d).getDay();
+          const cell = document.createElement('div');
+          cell.style.cssText = 'display:flex;align-items:flex-start;justify-content:flex-start;flex-direction:column;border-radius:10px;cursor:pointer;position:relative;width:100%;height:100%;min-height:0;padding:4px 5px;box-sizing:border-box;background:' +
+            (isToday ? 'var(--primary)' : 'rgba(255,255,255,0.04)') + ';color:' +
+            (isToday ? '#fff' : dow===0 ? 'var(--red)' : dow===6 ? 'var(--primary)' : 'var(--text)') +
+            ';font-weight:' + (isToday?'800':'500') + ';font-size:0.9rem;transition:background 0.15s;';
+          const numEl = document.createElement('span');
+          numEl.textContent = d;
+          numEl.style.cssText = 'font-size:2rem;font-weight:700;line-height:1.2;align-self:flex-start;';
+          cell.appendChild(numEl);
+          // Task: prima da fare, poi completati
+          const dayItems = allItems.filter(it => (it.summary||'').startsWith(key))
+            .sort((a,b) => (a.status==='completed'?1:0) - (b.status==='completed'?1:0));
+          dayItems.slice(0, 3).forEach((it, i) => {
+            const t = document.createElement('span');
+            const txt = (it.summary||'').replace(/^\d{4}-\d{2}-\d{2}\s*/, '');
+            t.textContent = (i+1) + '. ' + txt;
+            t.style.cssText = 'font-size:1.5rem;display:block;width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:1px;text-align:left;' +
+              (it.status==='completed' ? 'text-decoration:line-through;color:var(--text-dim);' : 'color:var(--cyan);');
+            cell.appendChild(t);
+          });
+          cell.addEventListener('click', () => openDayModal(y, m, d));
+          grid.appendChild(cell);
+        }
+      }
+
+      function loadTodoItems() {
+        return new Promise(resolve => {
+          if (!window.HA) { resolve(); return; }
+          window.HA.send('todo/item/list', { entity_id: TODO_ENTITY }, resp => {
+            allItems = (resp && resp.items) || [];
+            resolve();
+          });
+        });
+      }
+
+      function openDayModal(y, m, d) {
+        selectedDay = dayKey(y, m, d);
+        document.getElementById('dayModalTitle').textContent = padZ(d) + ' ' + MONTHS[m] + ' ' + y;
+        document.getElementById('dayTodoInput').value = '';
+        loadTodoItems().then(() => {
+          renderDayItems();
+          document.getElementById('dayModal').style.display = 'flex';
+        });
+      }
+
+      function renderDayItems() {
+        const list = document.getElementById('dayTodoList');
+        while (list.firstChild) list.removeChild(list.firstChild);
+        const items = allItems.filter(it => (it.summary||'').startsWith(selectedDay))
+          .sort((a,b) => (a.status==='completed'?1:0) - (b.status==='completed'?1:0));
+        if (items.length === 0) {
+          const empty = document.createElement('div');
+          empty.style.cssText = 'color:var(--text-dim);font-size:0.85rem;text-align:center;padding:16px;';
+          empty.textContent = 'Nessuna nota per questo giorno';
+          list.appendChild(empty); return;
+        }
+        items.forEach((it, i) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);';
+          const cb = document.createElement('input'); cb.type = 'checkbox';
+          cb.checked = it.status === 'completed';
+          cb.dataset.uid = it.uid || '';
+          cb.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:var(--primary);flex-shrink:0;';
+          const lbl = document.createElement('span'); lbl.style.cssText = 'flex:1;font-size:0.85rem;' + (it.status==='completed'?'text-decoration:line-through;color:var(--text-dim);':'color:var(--text);');
+          lbl.textContent = (i+1) + '. ' + (it.summary||'').replace(/^\d{4}-\d{2}-\d{2}\s*/, '');
+          const del = document.createElement('button'); del.textContent = '✕';
+          del.dataset.uid = it.uid || '';
+          del.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:1rem;';
+          cb.addEventListener('change', () => {
+            if (!window.HA) return;
+            window.HA.callService('todo', 'update_item', { entity_id: TODO_ENTITY, item: cb.dataset.uid, status: cb.checked ? 'completed' : 'needs_action' });
+            setTimeout(() => loadTodoItems().then(() => { renderDayItems(); renderCal(calYear, calMonth); }), 500);
+          });
+          del.addEventListener('click', () => {
+            if (!window.HA) return;
+            window.HA.callService('todo', 'remove_item', { entity_id: TODO_ENTITY, item: del.dataset.uid });
+            setTimeout(() => loadTodoItems().then(() => { renderDayItems(); renderCal(calYear, calMonth); }), 500);
+          });
+          row.appendChild(cb); row.appendChild(lbl); row.appendChild(del);
+          list.appendChild(row);
+        });
+      }
+
+      document.getElementById('calPrev').addEventListener('click', () => {
+        let m = calMonth - 1, y = calYear;
+        if (m < 0) { m = 11; y--; }
+        loadTodoItems().then(() => renderCal(y, m));
+      });
+      document.getElementById('calNext').addEventListener('click', () => {
+        let m = calMonth + 1, y = calYear;
+        if (m > 11) { m = 0; y++; }
+        loadTodoItems().then(() => renderCal(y, m));
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const addBtn = document.getElementById('dayTodoAdd');
+        const input = document.getElementById('dayTodoInput');
+        const closeBtn = document.getElementById('dayModalClose');
+        const modal = document.getElementById('dayModal');
+        if (addBtn) addBtn.addEventListener('click', () => {
+          const text = input.value.trim();
+          if (!text || !window.HA) return;
+          const d = selectedDay.split('-')[2];
+          window.HA.callService('todo', 'add_item', { entity_id: TODO_ENTITY, item: selectedDay + ' ' + text });
+          input.value = '';
+          setTimeout(() => loadTodoItems().then(() => { renderDayItems(); renderCal(calYear, calMonth); }), 500);
+        });
+        if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter' && addBtn) addBtn.click(); });
+        if (closeBtn) closeBtn.addEventListener('click', () => { if (modal) modal.style.display = 'none'; });
+        if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+      });
+
+      setTimeout(() => loadTodoItems().then(() => renderCal(new Date().getFullYear(), new Date().getMonth())), 1200);
+    })();
+
+    // Bottoni screen2
+    const callS = (d, s, t) => window.HA && window.HA.callService(d, s, t);
+    const s2btn = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    s2btn('s2BtnBuonanotte', () => callS('automation', 'trigger', { entity_id: 'automation.buonanotte' }));
+    s2btn('s2BtnAccendi',   () => callS('automation', 'trigger', { entity_id: 'automation.new_automation' }));
+    s2btn('s2BtnSpegni',    () => callS('automation', 'trigger', { entity_id: 'automation.new_automation2' }));
+  })();
+  </script>
+
+</body>
+
+</html>
