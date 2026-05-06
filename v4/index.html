@@ -18,42 +18,586 @@
 <body>
 
   <div id="carousel" style="display:flex;width:300vw;height:100vh;overflow:hidden;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);will-change:transform;">
-
   <!-- ═══ SCREEN 1 — PLANIMETRIA 3D ═══ -->
   <div id="screen1" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;">
 
-    <!-- INCLUDE: contenuto screen1 da dashboard_3d_v3.html righe 978-1357 -->
-    <!-- (header, main con scene-3d-wrap e cards-sidebar) -->
-    <!-- Per brevità, includi il blocco HTML dal file v3 -->
+  <div class="header">
+    <div>
+      <h1>Ciao Igor</h1>
+      <div class="date" id="dateDisplay"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div class="weather-pill">
+        <span class="material-symbols-outlined filled" style="color:var(--primary)">partly_cloudy_day</span>
+        <span id="weatherState">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="scene-3d-wrap" id="sceneWrap">
+      <canvas id="sceneCanvas"></canvas>
+      <div class="scene-overlay-top">
+        <div class="scene-tag"><span class="dot"></span>Live · WebGL</div>
+        <div class="scene-hint">Trascina · Tasto destro ruota · Scroll zoom · Doppio click reset</div>
+      </div>
+      <div class="scene-tooltip" id="sceneTooltip"></div>
+      <div class="scene-controls">
+        <button class="scene-btn" id="btnViewTop" title="Vista dall'alto"><span
+            class="material-symbols-outlined">expand_more</span></button>
+        <button class="scene-btn" id="btnViewIso" title="Isometrica"><span
+            class="material-symbols-outlined">view_in_ar</span></button>
+        <button class="scene-btn" id="btnViewReset" title="Reset"><span
+            class="material-symbols-outlined">restart_alt</span></button>
+        <button class="scene-btn" id="btnAutoRotate" title="Rotazione automatica"><span
+            class="material-symbols-outlined">360</span></button>
+      </div>
+      <div class="scene-loading" id="sceneLoading">Caricamento scena 3D…</div>
+      <div class="scene-error" id="sceneError">
+        <div>Errore caricamento Three.js</div><code id="sceneErrorMsg"></code>
+      </div>
+    </div>
+
+    <div class="cards-sidebar"><div class="cards-grid">
+      <div class="card">
+        <div class="card-title">Soggiorno</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <span class="badge badge-orange"><span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;margin-right:2px;">thermometer</span><span id="badgeTemp">—°C</span></span>
+          <span class="badge badge-blue"><span class="material-symbols-outlined" style="font-size:0.95rem;vertical-align:middle;margin-right:2px;">water_drop</span><span id="badgeHum">—%</span></span>
+          <span class="badge" id="badgeLux">— lux</span>
+        </div>
+        <div class="device-row" id="rowTV">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span class="material-symbols-outlined">tv</span>
+            </div>
+            <div>
+              <div class="device-name">Sony TV</div>
+              <div class="device-state" id="tvState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleTV"></button>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconLampada" style="color:var(--orange)"><span
+                class="material-symbols-outlined filled">lightbulb</span></div>
+            <div>
+              <div class="device-name">Tapo L520</div>
+              <div class="device-state" id="lampadaState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleLampada"></button>
+        </div>
+        <div class="slider-container"><input type="range" class="slider" id="sliderLampada" min="0" max="255"
+            value="0" /></div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span
+                class="material-symbols-outlined">highlight</span></div>
+            <div>
+              <div class="device-name">Faretti</div>
+              <div class="device-state" id="farettiState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleFaretti"></button>
+        </div>
+        <button class="action-btn" id="btnCinema" style="width:100%;flex-direction:row;gap:10px;margin-top:12px;">
+          <span class="material-symbols-outlined filled" style="color:var(--primary)">movie</span>
+          <span style="font-size:0.85rem;font-weight:700;">Home Cinema</span>
+        </button>
+      </div>
+
+      <!-- CARD CONDIZIONATORE SWITCHBOT -->
+      <div class="card" id="cardAC">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Condizionatore</span>
+          <button class="toggle" id="toggleAC"></button>
+        </div>
+
+        <!-- Stato + temperatura target -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="material-symbols-outlined" id="acModeIcon" style="font-size:1.6rem;color:var(--cyan)">ac_unit</span>
+            <div>
+              <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Modalità</div>
+              <div style="font-size:0.9rem;font-weight:700;" id="acModeLabel">—</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Temperatura</div>
+            <div style="font-size:1.6rem;font-weight:900;color:var(--primary);" id="acTempDisplay">—°</div>
+          </div>
+        </div>
+
+        <!-- Slider temperatura -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span class="material-symbols-outlined" style="font-size:1rem;color:var(--text-dim)">remove</span>
+          <input type="range" class="slider" id="sliderACTemp" min="16" max="30" value="22" style="flex:1;" />
+          <span class="material-symbols-outlined" style="font-size:1rem;color:var(--text-dim)">add</span>
+          <span style="font-size:0.85rem;font-weight:700;min-width:32px;text-align:right;" id="acTempSliderVal">22°</span>
+        </div>
+
+        <!-- Modalità caldo/freddo -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="ac-mode-btn" id="btnACCool" data-mode="cool">
+            <span class="material-symbols-outlined">ac_unit</span> Freddo
+          </button>
+          <button class="ac-mode-btn" id="btnACHeat" data-mode="heat">
+            <span class="material-symbols-outlined">local_fire_department</span> Caldo
+          </button>
+          <button class="ac-mode-btn" id="btnACFan" data-mode="fan_only">
+            <span class="material-symbols-outlined">mode_fan</span> Ventola
+          </button>
+        </div>
+
+        <!-- Velocità ventola -->
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.75rem;color:var(--text-dim);font-weight:600;">VENTOLA</span>
+          <div style="display:flex;gap:6px;">
+            <button class="ac-fan-btn" id="btnFanAuto" data-fan="auto">Auto</button>
+            <button class="ac-fan-btn" id="btnFanLow" data-fan="low">Bassa</button>
+            <button class="ac-fan-btn" id="btnFanMid" data-fan="medium">Media</button>
+            <button class="ac-fan-btn" id="btnFanHigh" data-fan="high">Alta</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Energia</div>
+        <div class="power-gauge">
+          <div class="power-circle">
+            <svg viewBox="0 0 120 120">
+              <circle class="track" cx="60" cy="60" r="52" />
+              <circle class="fill-ring" id="powerRing" cx="60" cy="60" r="52" stroke-dasharray="326.7"
+                stroke-dashoffset="326.7" />
+            </svg>
+            <div class="value">
+              <div class="num" id="powerNum">—</div>
+              <div class="unit">Watt</div>
+              <div class="scale">/ 3500W</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;color:var(--green)" id="out0">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 1</div>
+            <button class="toggle" id="toggleOut0" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out1">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 2</div>
+            <button class="toggle" id="toggleOut1" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out2">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 3</div>
+            <button class="toggle" id="toggleOut2" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:rgba(255,255,255,0.03);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:800;" id="out3">—</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);margin-top:2px;">OUT 4</div>
+            <button class="toggle" id="toggleOut3" style="margin-top:6px;transform:scale(0.8);"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--orange)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange);background:rgba(255,184,116,0.1);"><span
+                class="material-symbols-outlined filled">water_heater</span></div>
+            <div>
+              <div class="device-name">Scaldabagno</div>
+              <div class="device-state" id="boilerPowerState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--orange)" id="boilerPower">—W</span>
+            <button class="toggle" id="toggleBoilerEnergy"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--cyan)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--cyan);background:rgba(100,223,223,0.1);"><span
+                class="material-symbols-outlined">local_laundry_service</span></div>
+            <div>
+              <div class="device-name">Lavatrice</div>
+              <div class="device-state" id="washerState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--cyan)" id="washerPower">—W</span>
+            <button class="toggle" id="toggleWasherEnergy"></button>
+          </div>
+        </div>
+        <div class="device-row" style="border-left:3px solid var(--text)">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--text);background:rgba(255,255,255,0.1);"><span
+                class="material-symbols-outlined">kitchen</span></div>
+            <div>
+              <div class="device-name">Frigorifero</div>
+              <div class="device-state" id="fridgeState">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:1.4rem;font-weight:900;color:var(--text)" id="fridgePower">—W</span>
+            <button class="toggle" id="toggleFridgePower"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Scaldabagno Ariston</div>
+        <div class="temp-circle">
+          <svg viewBox="0 0 120 120">
+            <circle class="track" cx="60" cy="60" r="52" />
+            <circle class="fill-ring" id="tempRing" cx="60" cy="60" r="52" stroke-dasharray="326.7"
+              stroke-dashoffset="100" />
+          </svg>
+          <div class="value">
+            <div class="num" id="boilerTemp">—°</div>
+            <div class="unit">Target</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--cyan);font-size:20px;">shower</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="showers">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Docce</div>
+          </div>
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--text-dim);font-size:20px;">mode</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="boilerMode">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Modo</div>
+          </div>
+          <div style="text-align:center;padding:12px 4px;background:rgba(255,255,255,0.03);border-radius:12px;"><span
+              class="material-symbols-outlined" style="color:var(--green);font-size:20px;">health_and_safety</span>
+            <div style="font-size:0.9rem;font-weight:800;margin-top:4px;" id="antiLeg">—</div>
+            <div style="font-size:0.55rem;color:var(--text-dim);text-transform:uppercase;">Anti-Leg.</div>
+          </div>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">eco</span></div>
+            <div class="device-name">Eco Mode</div>
+          </div>
+          <button class="toggle" id="toggleEco"></button>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--primary)"><span
+                class="material-symbols-outlined">power_settings_new</span></div>
+            <div class="device-name">Alimentazione</div>
+          </div>
+          <button class="toggle" id="toggleBoilerPower"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Sicurezza</div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconDoor" style="color:var(--green);background:rgba(102,221,139,0.1);"><span
+                class="material-symbols-outlined filled">sensor_door</span></div>
+            <div>
+              <div class="device-name">Porta / Finestra</div>
+              <div class="device-state" id="doorState">—</div>
+            </div>
+          </div>
+          <span class="badge badge-green" id="doorBadge">—</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" id="iconMotion" style="color:var(--cyan)"><span
+                class="material-symbols-outlined">motion_sensor_active</span></div>
+            <div>
+              <div class="device-name">Sensore Movimento</div>
+              <div class="device-state" id="motionState">—</div>
+            </div>
+          </div>
+          <span class="badge" id="motionBadge">—</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange)"><span
+                class="material-symbols-outlined filled">light_mode</span></div>
+            <div>
+              <div class="device-name">Luminosita'</div>
+              <div class="device-state" id="luxState">—</div>
+            </div>
+          </div>
+          <span class="badge" id="luxBadge">— lux</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--green)"><span
+                class="material-symbols-outlined">battery_full</span></div>
+            <div>
+              <div class="device-name">Batteria Sensore</div>
+              <div class="device-state" id="sensorBattState">—</div>
+            </div>
+          </div>
+          <span class="badge badge-green" id="sensorBattBadge">—%</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Camera 2</div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon" style="color:var(--orange)"><span class="material-symbols-outlined">desk</span>
+            </div>
+            <div>
+              <div class="device-name">Yeelight Screenbar</div>
+              <div class="device-state" id="xiaomiLightState">—</div>
+            </div>
+          </div>
+          <button class="toggle" id="toggleXiaomiLight"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Dispositivi</div>
+        <div class="person-badge">
+          <div class="person-avatar">I<div class="dot" id="personDot"></div>
+          </div>
+          <div>
+            <div style="font-size:0.9rem;font-weight:700;color:var(--primary)">Igor</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;font-weight:600;"
+              id="personState">—</div>
+          </div>
+        </div>
+        <div id="devicesContainer"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Quick Actions</div>
+        <div class="actions-grid" style="margin-bottom:20px;">
+          <button class="action-btn" id="btnBuonanotte"><span class="material-symbols-outlined filled"
+              style="color:#b388ff">bedtime</span><span>Buonanotte</span></button>
+          <button class="action-btn" id="btnAccendi"><span class="material-symbols-outlined filled"
+              style="color:var(--green)">desktop_windows</span><span>Accendi Post.</span></button>
+          <button class="action-btn" id="btnSpegni"><span class="material-symbols-outlined"
+              style="color:var(--red)">power_settings_new</span><span>Spegni Post.</span></button>
+        </div>
+        <div class="device-row" style="opacity:0.35" id="vacuumRow">
+          <div class="device-info">
+            <div class="device-icon"><span class="material-symbols-outlined">vacuum</span></div>
+            <div>
+              <div class="device-name">Roborock S5 Max</div>
+              <div class="device-state" id="vacuumState">Offline</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><span
+              style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-dim)">Lista
+              Spesa</span><span class="material-symbols-outlined"
+              style="font-size:18px;color:var(--text-dim)">shopping_cart</span></div>
+          <div id="shoppingList" style="font-size:0.8rem;color:var(--text-dim)">Caricamento...</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
 
   </div><!-- /screen1 -->
 
   <!-- ═══ SCREEN 2 — AUTOMAZIONI ═══ -->
+  <!-- SCREEN 2 -->
   <div id="screen2" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;background:var(--bg);">
-    <!-- INCLUDE: contenuto screen2 da dashboard_3d_v3.html righe 2833-2906 -->
+    <div class="header">
+      <div>
+        <h1>Automazioni</h1>
+        <div class="date" id="dateDisplay2"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-dim);">
+        <span class="material-symbols-outlined" style="font-size:1rem;">swipe_right</span> Torna alla planimetria
+      </div>
+    </div>
+    <div style="padding:80px 24px 24px;height:100%;box-sizing:border-box;overflow-y:auto;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;">
+
+        <!-- Placeholder: Node-RED flows status -->
+        <div class="card">
+          <div class="card-title">Node-RED</div>
+          <div style="color:var(--text-dim);font-size:0.85rem;margin-bottom:16px;">Stato flussi attivi</div>
+          <div class="device-row">
+            <div class="device-info">
+              <div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">account_tree</span></div>
+              <div><div class="device-name">Monitor Casa Igor</div><div class="device-state">Attivo</div></div>
+            </div>
+            <span style="font-size:0.75rem;color:var(--green);font-weight:700;">● LIVE</span>
+          </div>
+          <div class="device-row" style="margin-top:8px;">
+            <div class="device-info">
+              <div class="device-icon" style="color:var(--cyan)"><span class="material-symbols-outlined">sensors</span></div>
+              <div><div class="device-name">MQTT Broker</div><div class="device-state" id="s2MqttState">192.168.1.195:1883</div></div>
+            </div>
+            <span style="font-size:0.75rem;color:var(--cyan);font-weight:700;">● OK</span>
+          </div>
+          <a href="http://192.168.1.195:1880" target="_blank" style="display:block;margin-top:16px;">
+            <button class="action-btn" style="width:100%;flex-direction:row;gap:8px;">
+              <span class="material-symbols-outlined">open_in_new</span>
+              <span style="font-size:0.85rem;font-weight:700;">Apri Node-RED</span>
+            </button>
+          </a>
+        </div>
+
+        <!-- Placeholder: Quick automations -->
+        <div class="card">
+          <div class="card-title">Quick Automazioni</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="action-btn" id="s2BtnBuonanotte" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined filled" style="color:var(--primary)">bedtime</span>
+              <span style="font-size:0.85rem;font-weight:700;">Buonanotte</span>
+            </button>
+            <button class="action-btn" id="s2BtnAccendi" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined filled" style="color:var(--green)">desktop_tower_monitor</span>
+              <span style="font-size:0.85rem;font-weight:700;">Accendi Postazione</span>
+            </button>
+            <button class="action-btn" id="s2BtnSpegni" style="width:100%;flex-direction:row;gap:10px;">
+              <span class="material-symbols-outlined" style="color:var(--red)">power_off</span>
+              <span style="font-size:0.85rem;font-weight:700;">Spegni Postazione</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Placeholder: Shelly devices -->
+        <div class="card">
+          <div class="card-title">Dispositivi Shelly</div>
+          <div style="color:var(--text-dim);font-size:0.75rem;margin-bottom:12px;">MQTT → 192.168.1.195</div>
+          <div id="s2ShellyList" style="display:flex;flex-direction:column;gap:8px;">
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--green)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Lavatrice</div><div class="device-state" id="s2Lavatrice">—</div></div></div></div>
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--orange)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Scaldabagno</div><div class="device-state" id="s2Scaldabagno">—</div></div></div></div>
+            <div class="device-row"><div class="device-info"><div class="device-icon" style="color:var(--cyan)"><span class="material-symbols-outlined">wifi</span></div><div><div class="device-name">Frigorifero</div><div class="device-state" id="s2Frigo">—</div></div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div><!-- /screen2 -->
 
+
   <!-- ═══ SCREEN 3 — CALENDARIO ═══ -->
+  <!-- SCREEN 3 — CALENDARIO -->
   <div id="screen3" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;">
-    <!-- INCLUDE: contenuto screen3 da dashboard_3d_v3.html righe 2907-2934 -->
+
+    <!-- Selettore mese — parte del flex, non sovrapposto -->
+    <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:58px;background:rgba(8,8,26,0.95);border-bottom:1px solid rgba(173,198,255,0.1);">
+      <button id="calPrev" style="background:rgba(255,255,255,0.07);border:none;color:var(--text);cursor:pointer;font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;">‹</button>
+      <span id="calTitle" style="font-size:1.1rem;font-weight:700;color:var(--text);">—</span>
+      <button id="calNext" style="background:rgba(255,255,255,0.07);border:none;color:var(--text);cursor:pointer;font-size:1.4rem;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;">›</button>
+    </div>
+
+    <!-- Intestazione settimana -->
+    <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(7,1fr);padding:6px 8px 2px;">
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">LUN</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">MAR</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">MER</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">GIO</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--text-dim);">VEN</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--primary);">SAB</div>
+      <div style="text-align:center;font-size:0.6rem;font-weight:700;color:var(--red);">DOM</div>
+    </div>
+
+    <!-- Griglia giorni — occupa tutto lo spazio restante -->
+    <div id="calGrid" style="flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:4px;padding:4px 8px 8px;min-height:0;"></div>
+
   </div><!-- /screen3 -->
 
   </div><!-- /carousel -->
 
-  <!-- ═══ MODALI — fuori dal carousel ═══ -->
-  <!-- INCLUDE: modali da dashboard_3d_v3.html righe 2935-2999 -->
 
-  <!-- DOTS -->
+
+  <!-- ═══ MODALI — fuori dal carousel ═══ -->
+  <!-- MODALE GIORNO — fuori dal carousel per position:fixed corretto -->
+  <div id="dayModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,20,0.75);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="lamp-modal" style="max-width:480px;width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
+      <div class="lamp-modal-title" id="dayModalTitle">—</div>
+      <div id="dayTodoList" style="flex:1;overflow-y:auto;margin:12px 0;min-height:60px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input id="dayTodoInput" type="text" placeholder="Aggiungi nota..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:var(--text);font-family:inherit;font-size:0.9rem;outline:none;">
+        <button id="dayTodoAdd" style="padding:10px 16px;background:var(--primary);border:none;border-radius:12px;color:#fff;cursor:pointer;font-weight:700;">+</button>
+      </div>
+      <button class="lamp-modal-close" id="dayModalClose">— CHIUDI —</button>
+    </div>
+  </div>
+
+  <!-- MODALI — fuori dal carousel per evitare stacking context del transform -->
+  <div id="cameraModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,20,0.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div class="lamp-modal" style="max-width:560px;width:95%;position:relative;top:auto;left:auto;transform:none;">
+      <div class="lamp-modal-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📷 Tapo C202</span>
+        <span style="font-size:0.7rem;color:var(--text-dim)" id="cameraMotionBadge"></span>
+      </div>
+      <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;margin:12px 0;">
+        <img id="cameraStream" style="width:100%;height:100%;object-fit:cover;display:none;" />
+        <div id="cameraStreamError" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.85rem;">Caricamento...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="ac-fan-btn" id="btnCamPrivacy">🔒 Privacy</button>
+        <button class="ac-fan-btn" id="btnCamLed">💡 LED</button>
+        <button class="ac-fan-btn" id="btnCamAlarm">🔔 Allarme</button>
+        <button class="ac-fan-btn" id="btnCamReboot">↺ Riavvia</button>
+      </div>
+      <button class="lamp-modal-close" id="modalCloseCamera">— CHIUDI —</button>
+    </div>
+  </div>
+
+  <div class="lamp-modal-overlay" id="lampModal">
+    <div class="lamp-modal">
+      <div class="lamp-modal-title">Controllo Luce</div>
+      <div class="lamp-modal-name">Tapo L520</div>
+      <div class="lamp-modal-toggle-row"><span class="lamp-modal-power" id="modalLampState">—</span><button
+          class="toggle" id="modalToggleLampada"></button></div>
+      <div class="lamp-modal-row"><span class="lamp-modal-label">Luminosità</span><span class="lamp-modal-value"
+          id="modalBrightVal">—</span></div>
+      <input type="range" class="lamp-modal-slider bright" id="modalSliderBright" min="1" max="255" value="128" />
+      <div style="margin-top:24px;"><button class="lamp-modal-close" id="modalCloseLamp">— CHIUDI —</button></div>
+    </div>
+  </div>
+
+  <div class="lamp-modal-overlay" id="doorModal">
+    <div class="lamp-modal">
+      <div class="lamp-modal-title">Log Accessi</div>
+      <div class="lamp-modal-name">Porta / Finestra</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div id="doorCurrentDot" class="door-log-dot close"></div><span
+          style="font-size:0.85rem;font-weight:600;color:var(--text)" id="doorCurrentState">—</span>
+      </div>
+      <div class="door-log-list" id="doorLogList">
+        <div style="color:var(--text-dim);font-size:0.75rem;text-align:center;padding:20px;">Caricamento...</div>
+      </div>
+      <div style="margin-top:18px;"><button class="lamp-modal-close" id="modalCloseDoor">— CHIUDI —</button></div>
+    </div>
+  </div>
+
+  <div class="conn-status disconnected" id="connStatus"><span class="material-symbols-outlined"
+      style="font-size:14px;vertical-align:middle;">wifi_off</span> Disconnesso</div>
+
+
+  <!-- Modale giorno calendario -->
+  <div id="dayModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,20,0.75);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="lamp-modal" style="max-width:480px;width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden;">
+      <div class="lamp-modal-title" id="dayModalTitle">—</div>
+      <div id="dayTodoList" style="flex:1;overflow-y:auto;margin:12px 0;min-height:60px;"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input id="dayTodoInput" type="text" placeholder="Aggiungi nota..." style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:var(--text);font-family:inherit;font-size:0.9rem;outline:none;">
+        <button id="dayTodoAdd" style="padding:10px 16px;background:var(--primary);border:none;border-radius:12px;color:#fff;cursor:pointer;font-weight:700;">+</button>
+      </div>
+      <button class="lamp-modal-close" id="dayModalClose">— CHIUDI —</button>
+    </div>
+  </div>
+
+  <!-- DOTS INDICATORI -->
   <div id="carouselDots" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9000;">
     <div id="dot0" style="width:10px;height:10px;border-radius:50%;background:var(--primary);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(0)"></div>
     <div id="dot1" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(1)"></div>
     <div id="dot2" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(2)"></div>
   </div>
 
-  <!-- ═══ ENTRY POINT ═══ -->
+  <!-- ═══ MODULI JS ═══ -->
   <script type="module" src="js/ha.js"></script>
   <script type="module" src="js/app.js"></script>
-  <!-- Three.js scene (ES module, caricato separatamente) -->
   <script type="module" src="js/scene.js"></script>
 
 </body>
