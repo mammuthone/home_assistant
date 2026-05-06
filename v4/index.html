@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Casa di Igor</title>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+  <div id="carousel" style="display:flex;width:300vw;height:100vh;overflow:hidden;transition:transform 0.4s cubic-bezier(0.4,0,0.2,1);will-change:transform;">
+
+  <!-- ═══ SCREEN 1 — PLANIMETRIA 3D ═══ -->
+  <div id="screen1" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;">
+
+    <!-- INCLUDE: contenuto screen1 da dashboard_3d_v3.html righe 978-1357 -->
+    <!-- (header, main con scene-3d-wrap e cards-sidebar) -->
+    <!-- Per brevità, includi il blocco HTML dal file v3 -->
+
+  </div><!-- /screen1 -->
+
+  <!-- ═══ SCREEN 2 — AUTOMAZIONI ═══ -->
+  <div id="screen2" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;position:relative;background:var(--bg);">
+    <!-- INCLUDE: contenuto screen2 da dashboard_3d_v3.html righe 2833-2906 -->
+  </div><!-- /screen2 -->
+
+  <!-- ═══ SCREEN 3 — CALENDARIO ═══ -->
+  <div id="screen3" style="width:100vw;height:100vh;flex-shrink:0;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;">
+    <!-- INCLUDE: contenuto screen3 da dashboard_3d_v3.html righe 2907-2934 -->
+  </div><!-- /screen3 -->
+
+  </div><!-- /carousel -->
+
+  <!-- ═══ MODALI — fuori dal carousel ═══ -->
+  <!-- INCLUDE: modali da dashboard_3d_v3.html righe 2935-2999 -->
+
+  <!-- DOTS -->
+  <div id="carouselDots" style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9000;">
+    <div id="dot0" style="width:10px;height:10px;border-radius:50%;background:var(--primary);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(0)"></div>
+    <div id="dot1" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(1)"></div>
+    <div id="dot2" style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);transition:all 0.3s;cursor:pointer;" onclick="window._carouselGoTo&&window._carouselGoTo(2)"></div>
+  </div>
+
+  <!-- ═══ ENTRY POINT ═══ -->
+  <script type="module" src="js/ha.js"></script>
+  <script type="module" src="js/app.js"></script>
+  <!-- Three.js scene (ES module, caricato separatamente) -->
+  <script type="module" src="js/scene.js"></script>
+
+</body>
+</html>
